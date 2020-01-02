@@ -116,7 +116,7 @@ void printVerilog(const ControlPath<string>& p) {
   }
   cout << "module " << p.name << commaList(varStrings) << ";\n";
 
-  cout << "\treg [31:0] time;\n";
+  cout << "\treg [31:0] n_valids;\n";
   cout << endl;
 
   // Now: Add an always block with conditions for:
@@ -125,7 +125,7 @@ void printVerilog(const ControlPath<string>& p) {
   //  3. !Reset and !Valid
   cout << "\talways @(posedge clk) begin\n";
   cout << "\t\tif (rst) begin\n";
-  cout << "\t\t\ttime <= 0;" << endl;
+  cout << "\t\t\tn_valids <= 0;" << endl;
   // Set all counters to zero
   for (auto s : p.eventSchedules) {
     for (auto v : s.second.allVars()) {
@@ -136,7 +136,7 @@ void printVerilog(const ControlPath<string>& p) {
 
   cout << "\t\tend else if (valid) begin\n";
   // Increment counters
-  cout << "\t\t\ttime <= time + 1;" << endl;
+  cout << "\t\t\tn_valids <= n_valids+ 1;" << endl;
   // Increment variables if needed 
   for (auto s : p.eventSchedules) {
     for (auto v : s.second.allVars()) {
@@ -150,7 +150,7 @@ void printVerilog(const ControlPath<string>& p) {
         lv.push_back("(" + lowerVarN + " == " + to_string(s.second.maxValue(lowerVar)) + ")");
       }
       cout << "\t\t\tif " + sepList("(", ")", " && ", lv) << " begin" << endl;
-      cout << "\t\t\t\t" << vn + " <= " + vn + " + 1;\n";
+      cout << "\t\t\t\t" << vn + " <= (" + vn + " + 1) % " + to_string(s.second.maxValue(v) + 1) + ";\n";
       cout << "\t\t\tend" << endl;
     }
   }
@@ -171,7 +171,7 @@ void printVerilog(const ControlPath<string>& p) {
 
     }
     sums.push_back(to_string(s.second.sched.d));
-    cout << "\tassign " << s.first << " = " << sepList("(", ")", " + ", sums) << " == time;" << endl;
+    cout << "\tassign " << s.first << " = " << sepList("(", ")", " + ", sums) << " == n_valids;" << endl;
   }
 
   cout << "endmodule\n";
@@ -186,4 +186,16 @@ int main() {
   p.eventSchedules["do_a"] = aSched;
   printVerilog(p);
 
+  {
+    ControlPath<string> p;
+    p.name = "two_var_path";
+    
+    EventTrigger aSched;
+    aSched.sched = lexp({{"x", 3}, {"y", 1}}, 0);
+    aSched.setBounds("x", 0, 7);
+    aSched.setBounds("y", 0, 2);
+    p.eventSchedules["do_a"] = aSched;
+
+    printVerilog(p);
+  }
 }
