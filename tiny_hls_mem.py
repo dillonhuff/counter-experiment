@@ -64,9 +64,13 @@ class HWWrite:
         self.pred = pred
         self.time = time
 
+def sep_list(ld, rd, sep, strings):
+    return ld + sep.join(strings) + rd
+
 class HWProgram:
 
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.instances = {}
         self.loops = {}
         self.reads = []
@@ -94,13 +98,24 @@ class HWProgram:
         li.d = d
         return li
 
+    def print_verilog(self):
+        ports = []
+        world = self.instances["world"]
+        for pt in world.ports:
+            ports.append(pt_verilog(pt))
+        print('module', self.name, sep_list('(', ')', ', ', ports), ';\n')
+        print('endmodule\n')
+
+def pt_verilog(pt):
+    return ("output" if pt[1] else "input") + " " + pt[0]
+
 def outpt(name):
     return (name, True, 1)
 
 def inpt(name):
     return (name, False, 1)
 
-p = HWProgram();
+p = HWProgram('reg_read_10');
 world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("valid"), inpt("res"), outpt("in")], "")
 p.add_inst("world", world)
 
@@ -119,12 +134,16 @@ p.add_loop("x", 0, 10)
 # A: Just as usual with a control path value?
 # set Instructions should set ports to swvalues
 # and read instructions should produce hwvalues (and reads generate swvalues?)
-wire_read_time = p.sched_expr([(2, "x")], 0)
+wire_read_time = p.sched_expr([(1, "x")], 0)
 read_in = p.read("world", "in", wire_read_time)
 reg_write = p.write("data", {"q", read_in}, "en", wire_read_time)
 
-wire_write_time = p.sched_expr([(2, "x")], 1)
+wire_write_time = p.sched_expr([(1, "x")], 1)
 reg_val = p.read("data", "out", wire_write_time)
 out_write = p.write("world", {"res", reg_val}, "", wire_write_time)
+
+print('Verilog...')
+
+p.print_verilog()
 
 print('Done.')
