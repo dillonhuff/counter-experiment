@@ -67,12 +67,20 @@ class HWWrite:
 def sep_list(ld, rd, sep, strings):
     return ld + sep.join(strings) + rd
 
+class Tree(object):
+    def __init__(self, data):
+        self.data = data
+        self.children = []
+
+    def add_child(self, obj):
+        self.children.append(obj)
+
 class HWProgram:
 
     def __init__(self, name):
         self.name = name
         self.instances = {}
-        self.loops = {}
+        self.loop_root = Tree(("root", Interval(0, 0)))
         self.reads = []
         self.writes = []
 
@@ -89,7 +97,7 @@ class HWProgram:
         self.instructions.append(instr)
 
     def add_loop(self, name, m, e):
-        self.loops[name] = Interval(m, e)
+        self.loop_root.children.append((name, Interval(m, e)))
 
     def sched_expr(self, iis, d):
         li = LinearExpr()
@@ -98,12 +106,20 @@ class HWProgram:
         li.d = d
         return li
 
+    def synthesize_control_path(self):
+        return
+
     def print_verilog(self):
         ports = []
         world = self.instances["world"]
         for pt in world.ports:
             ports.append(pt_verilog(reverse_pt(pt)))
         print('module', self.name, sep_list('(', ')', ', ', ports), ';\n')
+
+        for inst in self.instances:
+            if inst != "world":
+                mod = self.instances[inst]
+                print('\t', mod.name, inst, '();')
         print('endmodule\n')
 
 def pt_verilog(pt):
@@ -145,8 +161,9 @@ wire_write_time = p.sched_expr([(1, "x")], 1)
 reg_val = p.read("data", "out", wire_write_time)
 out_write = p.write("world", {"res", reg_val}, "", wire_write_time)
 
-print('Verilog...')
+p.synthesize_control_path()
 
+print('Verilog...')
 p.print_verilog()
 
 print('Done.')
