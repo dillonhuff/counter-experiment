@@ -4,6 +4,12 @@ class LinearExpr:
         self.coeffs = {}
         self.d = 0
 
+    def __repr__(self):
+        clist = []
+        for c in self.coeffs:
+            clist.append(str(self.coeffs[c]) + ' * ' + c)
+        return sep_list('', '', ' * ', clist) + ' + ' + str(self.d)
+
 class Interval:
 
     def __init__(self, s, e):
@@ -110,6 +116,21 @@ class HWProgram:
         return
 
     def print_verilog(self):
+        # Q: How do we generate the control path for this circuit?
+        # Q: How are enables produced?
+        # A: Collect all write timings, and generate a name
+        #    for each write and a control path for each write?
+        #    return the result as a module?
+        event_map = {}
+        name_map = {}
+        wr_num = 0
+        for wr in self.writes:
+            name_map[wr] = 'write_' + str(wr_num)
+            event_map['write_' + str(wr_num)] = wr.time
+            wr_num += 1
+        print('All events that need an enable...')
+        for m in event_map:
+            print('\t', m, ':', event_map[m])
         ports = []
         world = self.instances["world"]
         for pt in world.ports:
@@ -120,6 +141,18 @@ class HWProgram:
             if inst != "world":
                 mod = self.instances[inst]
                 print('\t', mod.name, inst, '();')
+
+            all_writes = []
+            for rd in self.writes:
+                if rd.inst == inst:
+                    all_writes.append(rd)
+            print('\t', len(all_writes), 'writes to this instance')
+
+            all_reads = []
+            for rd in self.reads:
+                if rd.inst == inst:
+                    all_reads.append(rd)
+            print('\t', len(all_reads), 'reads from this instance')
         print('endmodule\n')
 
 def pt_verilog(pt):
@@ -143,21 +176,11 @@ p.add_inst("data", reg)
 
 p.add_loop("x", 0, 10)
 
-# Maybe read_port should create hw values at a given time?
-# Q: How to handle efficient predication of operations based on time?
-# A:  1. No predication, 1 setter: connect ports statically regardless of time
-#     2. Predication, 1 setter: connect all non-pred ports statically and connect control enable to pred port
-#     3. No pred, many set: mux based on control path enables, fail if any are not exclusive
-#     4. pred, many set: mux based on control path enables, and or together control predicates
-# Q: How to generate HWValues for loop index variables generated in the control path?
-# A: Just as usual with a control path value?
-# set Instructions should set ports to swvalues
-# and read instructions should produce hwvalues (and reads generate swvalues?)
-wire_read_time = p.sched_expr([(1, "x")], 0)
+wire_read_time = p.sched_expr([(2, "x")], 0)
 read_in = p.read("world", "in", wire_read_time)
 reg_write = p.write("data", {"q", read_in}, "en", wire_read_time)
 
-wire_write_time = p.sched_expr([(1, "x")], 1)
+wire_write_time = p.sched_expr([(2, "x")], 1)
 reg_val = p.read("data", "out", wire_write_time)
 out_write = p.write("world", {"res", reg_val}, "", wire_write_time)
 
