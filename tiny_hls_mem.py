@@ -69,12 +69,9 @@ def inpt(name):
 
 p = HWProgram();
 world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("valid"), inpt("res"), outpt("in")], "")
+p.add_inst("world", world)
 
-### What do I want to do?
-###  - Create a HWProgram
-###  - Create a register module inside of it
-###  - Create an action that reads the module in a loop
-###  - Create an action that writes the module in a loop
-###  - Test the output 
-###  - Later: Test a wide single port SRAM
-###  - Much later: Test aggregator + wide SRAM + swizzle
+reg = Module("reg_1", [inpt("clk"), inpt("rst"), inpt("d"), outpt("q")])
+p.add_inst("data", reg)
+
+
