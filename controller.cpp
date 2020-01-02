@@ -184,12 +184,49 @@ class Action {
     string sourceName;
 
     LinearExpr<int> addr;
+
 };
+
+// Represents a non-streaming memory
+class MemoryCell {
+  public:
+    string modName;
+    set<Port> inputPorts;
+    set<Port> outputPorts;
+
+};
+
+// You can build a streaming memory by adding
+// address generators to a MemoryCell
+//
+// Or to a collection of memory cells?
 
 class HWProgram {
   public:
-
+    map<string, Interval> varRanges;
     std::vector<Action> actions;
+    
+    void addVar(const std::string& v, const int l, const int r) {
+      varRanges[v] = {l, r};
+    }
+
+    void addLoad(const string& v0,
+        const string& v1,
+        const std::string& modName,
+        const int width,
+        const int lanes,
+        const string& argName) {
+      addLoad({v0, v1}, modName, width, lanes, argName);
+    }
+
+    void addLoad(const vector<string>& loopNames,
+        const std::string& modName,
+        const int width,
+        const int lanes,
+        const string& argName) {
+      actions.push_back({loops, true, modName, width, lanes, "<NONE>", argName});
+    }
+
 };
 
 int main() {
@@ -220,10 +257,19 @@ int main() {
     p.addVar("y", 0, 15);
     // First we need to add a store instruction to record current value?
     p.addLoad("x", "y", "reg_ld", 16, 1, "in_0");
-    // Next: Create a program with actions as well as a control path?
-    //  Form of the program: control path connected to "actions" with the
-    //  actions connected by a datapath?
+    // Q: What is the easiest way to do this? Maybe ports should be split in
+    // to lanes? and each operation is an action that binds program names to ports?
+    // Goal is to express streaming memories built out of larger memories, so maybe
+    // we need a way to describe memories first, and then a way to describe programs
+    // that operate on them?
     //
-    //  Program is a vector of instructions?
+    // Q: What is the final form of the program?
+    // A: It is a function that maps values and affine expressions on those values
+    //    to ???
+    // Issue: Mapping multiple actions to the same module instance, actions may
+    // use different ports of a module
+    //
+    // Start with actions that just include the name of an instance, a schedule expression
+    // and the input / output ports
   }
 }
