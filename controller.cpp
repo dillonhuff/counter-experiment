@@ -33,6 +33,22 @@ class LinearExpr {
     map<string, T> coefficients;
     T d; 
 
+    T value(const std::string& v) const {
+      return map_find(v, coefficients);
+    }
+
+    vector<string> lowerVars(const std::string& v) const {
+      vector<string> s;
+      for (auto m : allVars()) {
+        if (value(m) < value(v)) {
+          s.push_back(m);
+        }
+      }
+
+      sort_lt(s, [this](const string& n) { return map_find(n, coefficients); });
+      return s;
+    }
+
     set<string> allVars() const {
       return domain(coefficients);
     }
@@ -57,6 +73,10 @@ class EventTrigger {
     void setBounds(const std::string& name, const int start, const int end) {
       variableBounds[name] = {start, end};
     }
+
+    int maxValue(const std::string& var) const {
+      return map_find(var, variableBounds).second;
+    }
 };
 
 template<typename Event>
@@ -67,16 +87,20 @@ class ControlPath {
     map<Event, EventTrigger> eventSchedules;
 };
 
-string commaList(const vector<string>& str) {
-  string s = "(";
+string sepList(const string& ld, const string& rd, const string& sep, const vector<string>& str) {
+  string s = ld;
   for (size_t i = 0; i < str.size(); i++) {
     s += str[i];
     if (i < (str.size() - 1)) {
-      s += ", ";
+      s += sep; 
     }
   }
-  s += ")";
+  s += rd;
   return s;
+}
+
+string commaList(const vector<string>& str) {
+  return sepList("(", ")", ", ", str);
 }
 
 void printVerilog(const ControlPath<string>& p) {
@@ -86,11 +110,70 @@ void printVerilog(const ControlPath<string>& p) {
     for (auto v : s.second.allVars()) {
       if (!elem(v, varStrings)) {
         string vn = s.first + "_" + v;
-        varStrings.push_back(string("output [31:0] ") + vn);
+        varStrings.push_back(string("output reg [31:0] ") + vn);
       }
     }
   }
   cout << "module " << p.name << commaList(varStrings) << ";\n";
+
+  cout << "\treg [31:0] time;\n";
+  cout << endl;
+
+  // Now: Add an always block with conditions for:
+  //  1. Reset
+  //  2. !Reset and Valid
+  //  3. !Reset and !Valid
+  cout << "\talways @(posedge clk) begin\n";
+  cout << "\t\tif (rst) begin\n";
+  cout << "\t\t\ttime <= 0;" << endl;
+  // Set all counters to zero
+  for (auto s : p.eventSchedules) {
+    for (auto v : s.second.allVars()) {
+      string vn = s.first + "_" + v;
+      cout << "\t\t\t" << vn + " <= 0;\n";
+    }
+  }
+
+  cout << "\t\tend else if (valid) begin\n";
+  // Increment counters
+  cout << "\t\t\ttime <= time + 1;" << endl;
+  // Increment variables if needed 
+  for (auto s : p.eventSchedules) {
+    for (auto v : s.second.allVars()) {
+      string vn = s.first + "_" + v;
+      varStrings.push_back(string("output [31:0] ") + vn);
+      vector<string> lower = s.second.sched.lowerVars(v);
+      vector<string> lv{s.first};
+
+      for (auto lowerVar : lower) {
+        string lowerVarN = s.first + "_" + lowerVar;
+        lv.push_back("(" + lowerVarN + " == " + to_string(s.second.maxValue(lowerVar)) + ")");
+      }
+      cout << "\t\t\tif " + sepList("(", ")", " && ", lv) << " begin" << endl;
+      cout << "\t\t\t\t" << vn + " <= " + vn + " + 1;\n";
+      cout << "\t\t\tend" << endl;
+    }
+  }
+
+  cout << "\t\tend else begin\n";
+  cout << "\t\t\t// valid == 0, do nothing\n";
+  cout << "\t\tend\n";
+  cout << endl;
+  cout << "\tend\n";
+  cout << endl;
+
+  // Create assignments to output
+  for (auto s : p.eventSchedules) {
+    vector<string> sums;
+    for (auto v : s.second.allVars()) {
+      string vn = s.first + "_" + v;
+      sums.push_back("(" + vn + " * " + to_string(s.second.sched.value(v)) + ")");
+
+    }
+    sums.push_back(to_string(s.second.sched.d));
+    cout << "\tassign " << s.first << " = " << sepList("(", ")", " + ", sums) << " == time;" << endl;
+  }
+
   cout << "endmodule\n";
 }
 
@@ -101,6 +184,6 @@ int main() {
   aSched.sched = lexp({{"x", 1}}, 0);
   aSched.setBounds("x", 0, 7);
   p.eventSchedules["do_a"] = aSched;
-
   printVerilog(p);
+
 }
