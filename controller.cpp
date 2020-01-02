@@ -136,7 +136,7 @@ void printVerilog(const ControlPath<string>& p) {
 
   cout << "\t\tend else if (valid) begin\n";
   // Increment counters
-  cout << "\t\t\tn_valids <= n_valids+ 1;" << endl;
+  cout << "\t\t\tn_valids <= n_valids + 1;" << endl;
   // Increment variables if needed 
   for (auto s : p.eventSchedules) {
     for (auto v : s.second.allVars()) {
