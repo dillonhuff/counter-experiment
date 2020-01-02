@@ -102,12 +102,15 @@ class HWProgram:
         ports = []
         world = self.instances["world"]
         for pt in world.ports:
-            ports.append(pt_verilog(pt))
+            ports.append(pt_verilog(reverse_pt(pt)))
         print('module', self.name, sep_list('(', ')', ', ', ports), ';\n')
         print('endmodule\n')
 
 def pt_verilog(pt):
     return ("output" if pt[1] else "input") + " " + pt[0]
+
+def reverse_pt(pt):
+    return (pt[0], not pt[1], pt[2])
 
 def outpt(name):
     return (name, True, 1)
