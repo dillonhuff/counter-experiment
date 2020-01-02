@@ -3,11 +3,6 @@
 using namespace dbhc;
 using namespace std;
 
-class Action {
-  public:
-
-};
-
 template<typename A, typename B>
 set<A> range(const std::map<A, B>& m) {
   set<A> d;
@@ -119,10 +114,6 @@ void printVerilog(const ControlPath<string>& p) {
   cout << "\treg [31:0] n_valids;\n";
   cout << endl;
 
-  // Now: Add an always block with conditions for:
-  //  1. Reset
-  //  2. !Reset and Valid
-  //  3. !Reset and !Valid
   cout << "\talways @(posedge clk) begin\n";
   cout << "\t\tif (rst) begin\n";
   cout << "\t\t\tn_valids <= 0;" << endl;
@@ -177,6 +168,30 @@ void printVerilog(const ControlPath<string>& p) {
   cout << "endmodule\n";
 }
 
+class Action {
+  public:
+
+    vector<pair<string, Interval> > surroundingLoops;
+
+    bool isLoad;
+
+    string opName;
+    
+    int elemWidth;
+    int lanes;
+
+    string resName;
+    string sourceName;
+
+    LinearExpr<int> addr;
+};
+
+class HWProgram {
+  public:
+
+    std::vector<Action> actions;
+};
+
 int main() {
   ControlPath<string> p;
   p.name = "one_var_path";
@@ -197,5 +212,18 @@ int main() {
     p.eventSchedules["do_a"] = aSched;
 
     printVerilog(p);
+  }
+
+  {
+    HWProgram p;
+    p.addVar("x", 0, 5);
+    p.addVar("y", 0, 15);
+    // First we need to add a store instruction to record current value?
+    p.addLoad("x", "y", "reg_ld", 16, 1, "in_0");
+    // Next: Create a program with actions as well as a control path?
+    //  Form of the program: control path connected to "actions" with the
+    //  actions connected by a datapath?
+    //
+    //  Program is a vector of instructions?
   }
 }
