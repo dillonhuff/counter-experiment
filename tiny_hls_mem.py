@@ -49,15 +49,37 @@ class HWInstr:
         self.instance = instance
         self.operands = operands
 
+class HWRead:
+
+    def __init__(self, inst, port, time):
+        self.inst = inst
+        self.port = port
+        self.time = time
+
+class HWWrite:
+
+    def __init__(self, inst, ports, pred, time):
+        self.inst = inst
+        self.ports = ports
+        self.pred = pred
+        self.time = time
+
 class HWProgram:
 
     def __init__(self):
         self.instances = {}
         self.loops = {}
-        self.instructions = []
+        self.reads = []
+        self.writes = []
 
     def add_inst(self, name, mod):
         self.instances[name] = mod
+
+    def read(self, inst, pt, time):
+        self.reads.append(HWRead(inst, pt, time))
+
+    def write(self, inst, ports, pred, time):
+        self.writes.append(HWWrite(inst, ports, pred, time))
 
     def add_instr(self, instr):
         self.instructions.append(instr)
@@ -82,30 +104,27 @@ p = HWProgram();
 world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("valid"), inpt("res"), outpt("in")], "")
 p.add_inst("world", world)
 
-reg = Module("reg_1", [inpt("clk"), inpt("rst"), inpt("d"), outpt("q")], "")
+reg = Module("reg_1", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d"), outpt("q")], "")
 p.add_inst("data", reg)
 
 p.add_loop("x", 0, 10)
 
-# Create a time for the operation, then create a swvalue from the port value we are reading
-# and the operation time, then create an instruction that uses that and the reg?
-
 # Maybe read_port should create hw values at a given time?
-wire_read_time = p.sched_expr([(1, "x")], 0)
-in_wire = HWVal("world", "in")
-in_val = SWVal("wire_val", in_wire, wire_read_time)
+# Q: How to handle efficient predication of operations based on time?
+# A:  1. No predication, 1 setter: connect ports statically regardless of time
+#     2. Predication, 1 setter: connect all non-pred ports statically and connect control enable to pred port
+#     3. No pred, many set: mux based on control path enables, fail if any are not exclusive
+#     4. pred, many set: mux based on control path enables, and or together control predicates
+# Q: How to generate HWValues for loop index variables generated in the control path?
+# A: Just as usual with a control path value?
+# set Instructions should set ports to swvalues
+# and read instructions should produce hwvalues (and reads generate swvalues?)
+wire_read_time = p.sched_expr([(2, "x")], 0)
+read_in = p.read("world", "in", wire_read_time)
+reg_write = p.write("data", {"q", read_in}, "en", wire_read_time)
 
-write_reg = HWInstr("write", "data", [in_wire])
-
-p.add_instr(write_reg)
-
-out_set_time = p.sched_expr([(1, "x")], 1)
-out_wire = HWVal("world", "res")
-read_reg = HWInstr("read", "data", [])
-
-write_out = HWInstr("write_pt_res", "world", [read_reg])
+wire_write_time = p.sched_expr([(2, "x")], 1)
+reg_val = p.read("data", "out", wire_write_time)
+out_write = p.write("world", {"res", reg_val}, "", wire_write_time)
 
 print('Done.')
-
-
-
