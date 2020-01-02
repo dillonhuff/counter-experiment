@@ -89,6 +89,8 @@ p.add_loop("x", 0, 10)
 
 # Create a time for the operation, then create a swvalue from the port value we are reading
 # and the operation time, then create an instruction that uses that and the reg?
+
+# Maybe read_port should create hw values at a given time?
 wire_read_time = p.sched_expr([(1, "x")], 0)
 in_wire = HWVal("world", "in")
 in_val = SWVal("wire_val", in_wire, wire_read_time)
