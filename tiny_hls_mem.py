@@ -87,7 +87,7 @@ class Tree(object):
         self.children.append(obj)
 
 def build_control_path(event_map):
-    pts = [inpt("clk"), inpt('rst')]
+    pts = [inpt("clk"), inpt('rst'), inpt("valid")]
     for e in event_map:
         pts.append(outpt(e))
 
@@ -97,13 +97,25 @@ def build_control_path(event_map):
         ptstrings.append(pt_verilog(pt))
 
     body = ""
+    body += '\treg [31:0] n_valids;\n'
     decls = []
     for pt in event_map:
-        decls.append((pt, pt + '_reg'))
+        for var_name in event_map[pt].coeffs:
+            if not var_name in decls:
+                decls.append(var_name)
 
     for d in decls:
-        body += '\tassign ' + d[0] + ' = ' + d[1] + ';\n'
+        body += '\treg [31:0] {0};\n'.format(d)
+    # for d in decls:
+        # body += '\tassign ' + d[0] + ' = ' + d[1] + ';\n'
     body += "\talways @(posedge clk) begin\n"
+    body += '\t\tif (rst) begin\n'
+    body += '\t\t\tn_valids <= 0;\n'
+    for d in decls:
+        body += '\t\t\t{0} <= 0;\n'.format(d)
+    body += '\t\tend else if (valid) begin\n'
+    body += '\t\t\tn_valids <= n_valids + 1;\n'
+    body += '\t\tend\n'
     body += "\tend";
 
     return Module('control_path', ptstrings, body)
