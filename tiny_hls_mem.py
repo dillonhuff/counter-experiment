@@ -35,6 +35,11 @@ class Module:
         self.ports = ports
         self.body = body
 
+    def __repr__(self):
+        s = ''
+        s += 'module {0}'.format(self.name) + ' ' + sep_list('(', ')', ', ', self.ports) + ';\n' + self.body + '\nendmodule\n';
+        return s
+
 class HWVal:
 
     def __init__(self, instName, portName):
@@ -81,6 +86,28 @@ class Tree(object):
     def add_child(self, obj):
         self.children.append(obj)
 
+def build_control_path(event_map):
+    pts = [inpt("clk"), inpt('rst')]
+    for e in event_map:
+        pts.append(outpt(e))
+
+    print('event map: ', e)
+    ptstrings = []
+    for pt in pts:
+        ptstrings.append(pt_verilog(pt))
+
+    body = ""
+    decls = []
+    for pt in event_map:
+        decls.append((pt, pt + '_reg'))
+
+    for d in decls:
+        body += '\tassign ' + d[0] + ' = ' + d[1] + ';\n'
+    body += "\talways @(posedge clk) begin\n"
+    body += "\tend";
+
+    return Module('control_path', ptstrings, body)
+
 class HWProgram:
 
     def __init__(self, name):
@@ -117,28 +144,30 @@ class HWProgram:
         return li
 
     def synthesize_control_path(self):
-        return
-
-    def print_verilog(self):
-        # Q: How do we generate the control path for this circuit?
-        # Q: How are enables produced?
-        # A: Collect all write timings, and generate a name
-        #    for each write and a control path for each write?
-        #    return the result as a module?
         event_map = {}
         name_map = {}
         wr_num = 0
         for wr in self.writes:
-            name_map[wr] = 'write_' + str(wr_num)
-            event_map['write_' + str(wr_num)] = wr.time
-            wr_num += 1
+            if wr.pred != "":
+                name_map[wr] = 'write_' + str(wr_num) + '_en'
+                event_map['write_' + str(wr_num) + '_en'] = wr.time
+                wr_num += 1
         print('All events that need an enable...')
         for m in event_map:
             print('\t', m, ':', event_map[m])
+        cp_mod = build_control_path(event_map)
+        self.add_inst("control_path", cp_mod)
+        print('Control path...')
+        print(cp_mod)
+
+        return
+
+    def print_verilog(self):
         ports = []
         world = self.instances["world"]
         for pt in world.ports:
             ports.append(pt_verilog(reverse_pt(pt)))
+
         print('module', self.name, sep_list('(', ')', ', ', ports), ';\n')
 
         for inst in self.instances:
