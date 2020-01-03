@@ -91,7 +91,6 @@ def build_control_path(event_map):
     for e in event_map:
         pts.append(outpt(e))
 
-    # print('event map: ', e)
     ptstrings = []
     for pt in pts:
         ptstrings.append(pt_verilog(pt))
@@ -129,10 +128,10 @@ def build_control_path(event_map):
     body += '\t\tend else if (valid) begin\n'
     body += '\t\t\tn_valids <= n_valids + 1;\n'
 
-    for d in decls:
-        body += "\t\t\tif ({0}) begin\n".format('/* II valids since update*/')
-        body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
-        body += "\t\t\tend\n"
+    # for d in decls:
+        # body += "\t\t\tif ({0}) begin\n".format('/* II valids since update*/')
+        # body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
+        # body += "\t\t\tend\n"
 
     body += '\t\tend\n'
     body += "\tend";
@@ -194,30 +193,43 @@ class HWProgram:
         return
 
     def print_verilog(self):
+
+        istr = ""
+        a = []
+        for inst in self.instances:
+            if not inst in a:
+                if self.instances[inst].body != "":
+                    istr += '//{0}\n\n'.format(self.instances[inst].name)
+                    istr += str(self.instances[inst])
+                    istr += '\n\n'
+
         ports = []
         world = self.instances["world"]
         for pt in world.ports:
             ports.append(pt_verilog(reverse_pt(pt)))
 
-        print('module', self.name, sep_list('(', ')', ', ', ports), ';\n')
+        istr += 'module {0} {1};\n'.format(self.name, sep_list('(', ')', ', ', ports))
 
         for inst in self.instances:
             if inst != "world":
                 mod = self.instances[inst]
-                print('\t', mod.name, inst, '();')
+                istr += '\t' + mod.name + ' ' + inst + ';\n'
 
             all_writes = []
             for rd in self.writes:
                 if rd.inst == inst:
                     all_writes.append(rd)
-            print('\t', len(all_writes), 'writes to this instance')
+            istr += '\t// ' + str(len(all_writes)) + ' writes to this instance\n'
 
             all_reads = []
             for rd in self.reads:
                 if rd.inst == inst:
                     all_reads.append(rd)
-            print('\t', len(all_reads), 'reads from this instance')
-        print('endmodule\n')
+        istr += 'endmodule\n'
+
+        out = open(self.name + '.v', 'w')
+        out.write(istr)
+        out.close()
 
 def pt_verilog(pt):
     return ("output" if pt[1] else "input") + " " + pt[0]
@@ -232,7 +244,7 @@ def inpt(name):
     return (name, False, 1)
 
 p = HWProgram('reg_read_10');
-world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("valid"), inpt("res"), outpt("in")], "")
+world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
 p.add_inst("world", world)
 
 reg = Module("reg_1", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d"), outpt("q")], "")
@@ -247,7 +259,7 @@ reg_write = p.write("data", {"q", read_in}, "en", wire_read_time)
 
 wire_write_time = p.sched_expr(["x"], 1)
 reg_val = p.read("data", "out", wire_write_time)
-out_write = p.write("world", {"res", reg_val}, "", wire_write_time)
+out_write = p.write("world", {"res", reg_val}, "valid", wire_write_time)
 
 p.synthesize_control_path()
 
