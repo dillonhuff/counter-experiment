@@ -93,7 +93,7 @@ class Tree(object):
         self.children.append(obj)
 
 def build_control_path(event_map):
-    pts = [inpt("clk"), inpt('rst'), inpt("valid")]
+    pts = [inpt("clk"), inpt('rst'), inpt("en")]
     for e in event_map:
         pts.append(outpt(e))
 
@@ -131,7 +131,7 @@ def build_control_path(event_map):
     body += '\t\t\tn_valids <= 0;\n'
     for d in decls:
         body += '\t\t\t{0} <= 0;\n'.format(d)
-    body += '\t\tend else if (valid) begin\n'
+    body += '\t\tend else if (en) begin\n'
     body += '\t\t\tn_valids <= n_valids + 1;\n'
 
     # for d in decls:
@@ -253,6 +253,8 @@ class HWProgram:
                     istr += '\tassign {0} = clk;\n'.format(pt_name(inst, inpt("clk")))
                 if inpt("rst") in mod.ports:
                     istr += '\tassign {0} = rst;\n'.format(pt_name(inst, inpt("rst")))
+                if inst == "control_path" and inpt("en") in mod.ports:
+                    istr += '\tassign {0} = en;\n'.format(pt_name(inst, inpt("en")))
                 istr += '\n'
 
             all_writes = []
