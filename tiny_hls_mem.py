@@ -37,7 +37,10 @@ class Module:
 
     def __repr__(self):
         s = ''
-        s += 'module {0}'.format(self.name) + ' ' + sep_list('(', ')', ', ', self.ports) + ';\n' + self.body + '\nendmodule\n';
+        portstrings = []
+        for pt in self.ports:
+            portstrings.append(pt_verilog(pt))
+        s += 'module {0}'.format(self.name) + ' ' + sep_list('(', ')', ', ', portstrings) + ';\n' + self.body + '\nendmodule\n';
         return s
 
 class HWVal:
@@ -139,8 +142,13 @@ def build_control_path(event_map):
     body += '\t\tend\n'
     body += "\tend";
 
-    return Module('control_path', ptstrings, body)
+    return Module('control_path', pts, body)
 
+def pt_underscore_str(inst, port):
+    if inst == 'world':
+        return port
+    else:
+        return inst + '_' + port
 def pt_dot_str(inst, port):
     if inst == 'world':
         return port
@@ -233,8 +241,15 @@ class HWProgram:
 
         for inst in self.instances:
             if inst != "world":
+                connect_strs = []
+                for pt in self.instances[inst].ports:
+                    istr += '\tlogic {0};\n'.format(pt_name(inst, pt))
+                    # if is_in_pt(pt):
+                    # else:
+                        # istr += '\tlogic {0};\n'.format(pt_name(inst, pt))
+                    connect_strs.append('.{0}({1})'.format(pt[0], pt_name(inst, pt)))
                 mod = self.instances[inst]
-                istr += '\t' + mod.name + ' ' + inst + ';\n'
+                istr += '\t' + mod.name + ' ' + inst + sep_list('(', ')', ', ', connect_strs) + ';\n'
 
             all_writes = []
             for rd in self.writes:
@@ -252,7 +267,7 @@ class HWProgram:
             writes = ports_to_writes[w]
             if len(writes) == 1:
                 trigger = writes[0][0]
-                istr += '\tassign {0} = {1};\n'.format(pt_dot_str(w[0], w[1]), pt_dot_str(trigger.inst, trigger.port));
+                istr += '\tassign {0} = {1};\n'.format(pt_underscore_str(w[0], w[1]), pt_underscore_str(trigger.inst, trigger.port));
             else:
                 print('Error: More than one write to mem, add multiplexing')
                 assert(False)
@@ -270,6 +285,15 @@ def reverse_pt(pt):
 
 def outpt(name):
     return (name, True, 1)
+
+def is_out_pt(pt):
+    return pt[1]
+
+def pt_name(inst, pt):
+    return inst + '_' + pt[0]
+
+def is_in_pt(pt):
+    return not pt[1]
 
 def inpt(name):
     return (name, False, 1)
