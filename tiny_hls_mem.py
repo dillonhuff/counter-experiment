@@ -225,12 +225,14 @@ class HWProgram:
         print('All writes:', ports_to_writes)
         istr = ""
         a = []
+        # Declare internally defined modules, such as the control path
         for inst in self.instances:
-            if not inst in a:
+            if not self.instances[inst].name in a:
                 if self.instances[inst].body != "":
                     istr += '//{0}\n\n'.format(self.instances[inst].name)
                     istr += str(self.instances[inst])
                     istr += '\n\n'
+                    a.append(self.instances[inst].name)
 
         ports = []
         world = self.instances["world"]
@@ -244,12 +246,14 @@ class HWProgram:
                 connect_strs = []
                 for pt in self.instances[inst].ports:
                     istr += '\tlogic {0};\n'.format(pt_name(inst, pt))
-                    # if is_in_pt(pt):
-                    # else:
-                        # istr += '\tlogic {0};\n'.format(pt_name(inst, pt))
                     connect_strs.append('.{0}({1})'.format(pt[0], pt_name(inst, pt)))
                 mod = self.instances[inst]
                 istr += '\t' + mod.name + ' ' + inst + sep_list('(', ')', ', ', connect_strs) + ';\n'
+                if inpt("clk") in mod.ports:
+                    istr += '\tassign {0} = clk;\n'.format(pt_name(inst, inpt("clk")))
+                if inpt("rst") in mod.ports:
+                    istr += '\tassign {0} = rst;\n'.format(pt_name(inst, inpt("rst")))
+                istr += '\n'
 
             all_writes = []
             for rd in self.writes:
