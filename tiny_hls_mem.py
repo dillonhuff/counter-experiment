@@ -67,6 +67,9 @@ class HWRead:
         self.port = port
         self.time = time
 
+    def __repr__(self):
+        return 'wr: ' + self.inst + '.' + str(self.port) + '[' + str(self.time) + ']'
+
 class HWWrite:
 
     def __init__(self, inst, ports, pred, time):
@@ -153,9 +156,11 @@ class HWProgram:
 
     def read(self, inst, pt, time):
         self.reads.append(HWRead(inst, pt, time))
+        return self.reads[-1]
 
     def write(self, inst, ports, pred, time):
         self.writes.append(HWWrite(inst, ports, pred, time))
+        return self.writes[-1]
 
     def add_instr(self, instr):
         self.instructions.append(instr)
@@ -194,6 +199,16 @@ class HWProgram:
 
     def print_verilog(self):
 
+        # Need to map reads to operations and operations to reads
+        ports_to_writes = {}
+        for rd in self.writes:
+            for pt in rd.ports:
+                ports_to_writes[(rd.inst, pt)] = []
+        for rd in self.writes:
+            for pt in rd.ports:
+                val = rd.ports[pt]
+                ports_to_writes[(rd.inst, pt)].append((val, rd.time))
+        print('All writes:', ports_to_writes)
         istr = ""
         a = []
         for inst in self.instances:
@@ -255,11 +270,11 @@ p.set_ii("x", 2)
 
 wire_read_time = p.sched_expr(["x"], 0)
 read_in = p.read("world", "in", wire_read_time)
-reg_write = p.write("data", {"q", read_in}, "en", wire_read_time)
+reg_write = p.write("data", {"q" : read_in}, "en", wire_read_time)
 
 wire_write_time = p.sched_expr(["x"], 1)
 reg_val = p.read("data", "out", wire_write_time)
-out_write = p.write("world", {"res", reg_val}, "valid", wire_write_time)
+out_write = p.write("world", {"res" : reg_val}, "valid", wire_write_time)
 
 p.synthesize_control_path()
 
