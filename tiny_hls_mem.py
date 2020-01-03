@@ -89,6 +89,7 @@ class HWProgram:
         self.loop_root = Tree(("root", Interval(0, 0)))
         self.reads = []
         self.writes = []
+        self.iis = {}
 
     def add_inst(self, name, mod):
         self.instances[name] = mod
@@ -105,10 +106,13 @@ class HWProgram:
     def add_loop(self, name, m, e):
         self.loop_root.children.append((name, Interval(m, e)))
 
-    def sched_expr(self, iis, d):
+    def set_ii(self, name, ii):
+        self.iis[name] = ii
+
+    def sched_expr(self, loops, d):
         li = LinearExpr()
-        for ci in iis:
-            li.coeffs[ci[1]] = ci[0]
+        for ci in loops:
+            li.coeffs[ci] = self.iis[ci]
         li.d = d
         return li
 
@@ -175,12 +179,13 @@ reg = Module("reg_1", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d"), outpt("q
 p.add_inst("data", reg)
 
 p.add_loop("x", 0, 10)
+p.set_ii("x", 2)
 
-wire_read_time = p.sched_expr([(2, "x")], 0)
+wire_read_time = p.sched_expr(["x"], 0)
 read_in = p.read("world", "in", wire_read_time)
 reg_write = p.write("data", {"q", read_in}, "en", wire_read_time)
 
-wire_write_time = p.sched_expr([(2, "x")], 1)
+wire_write_time = p.sched_expr(["x"], 1)
 reg_val = p.read("data", "out", wire_write_time)
 out_write = p.write("world", {"res", reg_val}, "", wire_write_time)
 
