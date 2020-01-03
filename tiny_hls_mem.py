@@ -193,18 +193,19 @@ class HWProgram:
         return li
 
     def synthesize_control_path(self):
-        event_map = {}
-        name_map = {}
+        self.event_map = {}
+        self.name_map = {}
         wr_num = 0
         for wr in self.writes:
             if wr.pred != "":
-                name_map[wr] = 'write_' + str(wr_num) + '_en'
-                event_map['write_' + str(wr_num) + '_en'] = wr.time
+                self.name_map[wr] = 'write_' + str(wr_num) + '_en'
+                self.event_map['write_' + str(wr_num) + '_en'] = wr.time
                 wr_num += 1
+        print('name map: ', self.name_map)
         # print('All events that need an enable...')
         # for m in event_map:
             # print('\t', m, ':', event_map[m])
-        cp_mod = build_control_path(event_map)
+        cp_mod = build_control_path(self.event_map)
         self.add_inst("control_path", cp_mod)
         # print('Control path...')
         print(cp_mod)
@@ -218,10 +219,10 @@ class HWProgram:
         for rd in self.writes:
             for pt in rd.ports:
                 ports_to_writes[(rd.inst, pt)] = []
-        for rd in self.writes:
-            for pt in rd.ports:
-                val = rd.ports[pt]
-                ports_to_writes[(rd.inst, pt)].append((val, rd.time))
+        for wr in self.writes:
+            for pt in wr.ports:
+                val = wr.ports[pt]
+                ports_to_writes[(wr.inst, pt)].append((val, wr.time, wr.pred))
         print('All writes:', ports_to_writes)
         istr = ""
         a = []
@@ -268,6 +269,28 @@ class HWProgram:
                 if rd.inst == inst:
                     all_reads.append(rd)
 
+        # Create predicates for writes
+        pred_ports_to_writes = {}
+        for w in self.writes:
+            if w.pred != "":
+                if w.pred in pred_ports_to_writes:
+                    pred_ports_to_writes[(w.inst, w.pred)].append(w)
+                else:
+                    pred_ports_to_writes[(w.inst, w.pred)] = [w]
+
+        istr += '\t// Predicates for writes\n'
+        for pred_pt_i in pred_ports_to_writes:
+            inst = pred_pt_i[0]
+            pred_pt = pred_pt_i[1]
+            writes = pred_ports_to_writes[pred_pt_i]
+            if len(writes) == 1:
+                pred_pt_name = pt_underscore_str(inst, pred_pt)
+                istr += '\tassign {0} = {1};\n'.format(pred_pt_name, self.name_map[writes[0]])
+            else:
+                print('Error: More than one write uses predicate: {0}'.format(pred_pt))
+                assert(False)
+
+        istr += '\t// Writes\n'
         for w in ports_to_writes:
             # TODO: or the predicates for writes
             writes = ports_to_writes[w]
