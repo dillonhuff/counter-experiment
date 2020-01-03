@@ -141,6 +141,12 @@ def build_control_path(event_map):
 
     return Module('control_path', ptstrings, body)
 
+def pt_dot_str(inst, port):
+    if inst == 'world':
+        return port
+    else:
+        return inst + '.' + port
+
 class HWProgram:
 
     def __init__(self, name):
@@ -240,6 +246,16 @@ class HWProgram:
             for rd in self.reads:
                 if rd.inst == inst:
                     all_reads.append(rd)
+
+        for w in ports_to_writes:
+            # TODO: or the predicates for writes
+            writes = ports_to_writes[w]
+            if len(writes) == 1:
+                trigger = writes[0][0]
+                istr += '\tassign {0} = {1};\n'.format(pt_dot_str(w[0], w[1]), pt_dot_str(trigger.inst, trigger.port));
+            else:
+                print('Error: More than one write to mem, add multiplexing')
+                assert(False)
         istr += 'endmodule\n'
 
         out = open(self.name + '.v', 'w')
@@ -270,10 +286,10 @@ p.set_ii("x", 2)
 
 wire_read_time = p.sched_expr(["x"], 0)
 read_in = p.read("world", "in", wire_read_time)
-reg_write = p.write("data", {"q" : read_in}, "en", wire_read_time)
+reg_write = p.write("data", {"d" : read_in}, "en", wire_read_time)
 
 wire_write_time = p.sched_expr(["x"], 1)
-reg_val = p.read("data", "out", wire_write_time)
+reg_val = p.read("data", "q", wire_write_time)
 out_write = p.write("world", {"res" : reg_val}, "valid", wire_write_time)
 
 p.synthesize_control_path()
