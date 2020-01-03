@@ -91,7 +91,7 @@ def build_control_path(event_map):
     for e in event_map:
         pts.append(outpt(e))
 
-    print('event map: ', e)
+    # print('event map: ', e)
     ptstrings = []
     for pt in pts:
         ptstrings.append(pt_verilog(pt))
@@ -104,10 +104,23 @@ def build_control_path(event_map):
             if not var_name in decls:
                 decls.append(var_name)
 
+    for e in event_map:
+        body += '\twire {0}_happened;\n'.format(e)
+
+    body += '\n'
     for d in decls:
         body += '\treg [31:0] {0};\n'.format(d)
+    body += '\n'
     # for d in decls:
         # body += '\tassign ' + d[0] + ' = ' + d[1] + ';\n'
+    for e in event_map:
+        body += '\tassign {0} = {0}_happened;\n'.format(e)
+
+    body += '\n'
+    
+    for e in event_map:
+        body += '\tassign {0}_happened = {1} == n_valids;\n'.format(e, str(event_map[e]))
+    body += '\n'
     body += "\talways @(posedge clk) begin\n"
     body += '\t\tif (rst) begin\n'
     body += '\t\t\tn_valids <= 0;\n'
@@ -115,6 +128,12 @@ def build_control_path(event_map):
         body += '\t\t\t{0} <= 0;\n'.format(d)
     body += '\t\tend else if (valid) begin\n'
     body += '\t\t\tn_valids <= n_valids + 1;\n'
+
+    for d in decls:
+        body += "\t\t\tif ({0}) begin\n".format('/* II valids since update*/')
+        body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
+        body += "\t\t\tend\n"
+
     body += '\t\tend\n'
     body += "\tend";
 
@@ -164,12 +183,12 @@ class HWProgram:
                 name_map[wr] = 'write_' + str(wr_num) + '_en'
                 event_map['write_' + str(wr_num) + '_en'] = wr.time
                 wr_num += 1
-        print('All events that need an enable...')
-        for m in event_map:
-            print('\t', m, ':', event_map[m])
+        # print('All events that need an enable...')
+        # for m in event_map:
+            # print('\t', m, ':', event_map[m])
         cp_mod = build_control_path(event_map)
         self.add_inst("control_path", cp_mod)
-        print('Control path...')
+        # print('Control path...')
         print(cp_mod)
 
         return
@@ -232,7 +251,7 @@ out_write = p.write("world", {"res", reg_val}, "", wire_write_time)
 
 p.synthesize_control_path()
 
-print('Verilog...')
+print('// Verilog...')
 p.print_verilog()
 
 print('Done.')
