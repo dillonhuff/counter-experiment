@@ -122,80 +122,127 @@ class HWWrite:
 def sep_list(ld, rd, sep, strings):
     return ld + sep.join(strings) + rd
 
-def build_control_path(event_map, var_bounds, iis):
+def all_nodes(event_tree):
+    children = [event_tree]
+    nodes = []
+    while len(children) > 0:
+        # print('children: ', children)
+        next = children.pop()
+        nodes.append(next)
+        # print('next: ', next)
+
+        # print('Next has', len(next.children), 'children')            
+        for c in next.children:
+            # print('Adding child: ', c)
+            children.append(c)
+    return nodes 
+
+def build_control_path(event_tree, event_map, var_bounds, iis):
+    print('iis: ', iis)
+    predecessors = {}
+    nodes = all_nodes(event_tree)
+    print(nodes)
+    for n in nodes:
+        for c in n.children:
+            predecessors[c.data[0]] = n
+
+    print('Predecessors:', predecessors)
+
     pts = [inpt("clk"), inpt('rst'), inpt("en")]
-    for e in event_map:
-        pts.append(outpt(e))
-
-    ptstrings = []
-    for pt in pts:
-        ptstrings.append(pt_verilog(pt))
-
     body = ""
-    body += '\treg [31:0] n_valids;\n'
-    body += '\treg done;\n'
-    decls = []
-    for pt in event_map:
-        for var_name in event_map[pt].coeffs:
-            if not var_name in decls:
-                decls.append(var_name)
+    units = []
+    for n in iis:
+        val = iis[n]
+        name = val.unit
+        if name != "clk" and not name in units:
+            units.append(name)
 
-    for e in event_map:
-        body += '\twire {0}_happened;\n'.format(e)
+    body += '\t// Units of measurement\n'
+    body += '\tlogic {0}s_since_rst;\n'.format("clk")
+    for u in units:
+        body += '\tlogic {0}s_since_rst;\n'.format(u)
+        body += '\tlogic {0}s_before_last_clock_edge;\n'.format(u)
 
-    body += '\n'
-    for d in decls:
-        body += '\treg [31:0] {0};\n'.format(d)
-        body += '\twire {0}_inc_happened;\n'.format(d)
-        d_ii = iis[d].magnitude
-        body += '\tassign {0}_inc_happened = ({0} * {1} == n_valids) & en & !done;\n'.format(d, d_ii)
+    body += '\n\t// Happening flags\n'
+    for n in nodes:
+        data = n.data
+        name = data[0]
+        pts.append(outpt(data[0]))
+        body += '\tlogic {0}_happening;\n'.format(name)
+        body += '\tlogic {0}_done;\n'.format(name)
+    # for e in event_map:
+        # pts.append(outpt(e))
 
-    body += '\n'
+    # ptstrings = []
+    # for pt in pts:
+        # ptstrings.append(pt_verilog(pt))
+
+    # body += '\treg [31:0] n_valids;\n'
+    # body += '\treg done;\n'
+    # decls = []
+    # for pt in event_map:
+        # for var_name in event_map[pt].coeffs:
+            # if not var_name in decls:
+                # decls.append(var_name)
+
+    # for e in event_map:
+        # body += '\twire {0}_happened;\n'.format(e)
+
+    # body += '\n'
     # for d in decls:
-        # body += '\tassign ' + d[0] + ' = ' + d[1] + ';\n'
-    for e in event_map:
-        body += '\tassign {0} = {0}_happened;\n'.format(e)
+        # body += '\treg [31:0] {0};\n'.format(d)
+        # body += '\twire {0}_inc_happened;\n'.format(d)
+        # d_ii = iis[d].magnitude
+        # body += '\tassign {0}_inc_happened = ({0} * {1} == n_valids) & en & !done;\n'.format(d, d_ii)
 
-    body += '\n'
+    # body += '\n'
+    # # for d in decls:
+        # # body += '\tassign ' + d[0] + ' = ' + d[1] + ';\n'
+    # for e in event_map:
+        # body += '\tassign {0} = {0}_happened;\n'.format(e)
 
-    at_max_strings = []
-    for d in decls:
-        body += '\twire {0}_at_max;\n'.format(d)
-        d_max = var_bounds[d].e
-        body += '\tassign {0}_at_max = {0} == {1};\n'.format(d, d_max)
-        at_max_strings.append('{0}_at_max'.format(d));
+    # body += '\n'
+
+    # at_max_strings = []
+    # for d in decls:
+        # body += '\twire {0}_at_max;\n'.format(d)
+        # d_max = var_bounds[d].e
+        # body += '\tassign {0}_at_max = {0} == {1};\n'.format(d, d_max)
+        # at_max_strings.append('{0}_at_max'.format(d));
 
 
-    body += '\twire done_this_cycle;\n'
-    body += '\tassign done_this_cycle = {0};\n'.format(sep_list('', '', ' & ', at_max_strings))
+    # body += '\twire done_this_cycle;\n'
+    # body += '\tassign done_this_cycle = {0};\n'.format(sep_list('', '', ' & ', at_max_strings))
     
-    for e in event_map:
-        do_vars = []
-        for coeff in event_map[e].coeffs:
-            do_vars.append(coeff + '_inc_happened')
+    # for e in event_map:
+        # do_vars = []
+        # for coeff in event_map[e].coeffs:
+            # do_vars.append(coeff + '_inc_happened')
 
-        do_str = sep_list('(', ')', ' & ', do_vars)
+        # do_str = sep_list('(', ')', ' & ', do_vars)
         
-        body += '\tassign {0}_happened = {1} & en & !done;\n'.format(e, do_str)
-        # body += '\tassign {0}_happened = ({1} == n_valids) & en & !done;\n'.format(e, str(event_map[e]))
-    body += '\n'
+        # body += '\tassign {0}_happened = {1} & en & !done;\n'.format(e, do_str)
+        # # body += '\tassign {0}_happened = ({1} == n_valids) & en & !done;\n'.format(e, str(event_map[e]))
+    # body += '\n'
     body += "\talways @(posedge clk) begin\n"
     body += '\t\tif (rst) begin\n'
-    body += '\t\t\tn_valids <= 0;\n'
-    body += '\t\t\tdone <= 0;\n'
-    for d in decls:
-        body += '\t\t\t{0} <= 0;\n'.format(d)
-    body += '\t\tend else if (en & !done) begin\n'
-    body += '\t\t\tdone <= done_this_cycle;\n'
-    body += '\t\t\tn_valids <= n_valids + 1;\n'
-    body += '\t\t\t$display("{0} = %d", {0});\n'.format('n_valids')
+    body += '\t\t\tclks_since_rst <= 0;\n'
+    # body += '\t\t\tn_valids <= 0;\n'
+    # body += '\t\t\tdone <= 0;\n'
+    # for d in decls:
+        # body += '\t\t\t{0} <= 0;\n'.format(d)
+    body += '\t\tend else if (en & !root_done) begin\n'
+    body += '\t\t\tclks_since_rst <= clks_since_rst;\n'
+    # body += '\t\t\tdone <= done_this_cycle;\n'
+    # body += '\t\t\tn_valids <= n_valids + 1;\n'
+    # body += '\t\t\t$display("{0} = %d", {0});\n'.format('n_valids')
 
 
-    for d in decls:
-        body += '\t\t\tif ({0}_inc_happened) begin\n'.format(d)
-        body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
-        body += '\t\t\t\t$display("{0} = %d", {0});\n'.format(d)
-        body += '\t\t\tend\n'
+    # for d in decls:
+        # body += '\t\t\tif ({0}_inc_happened) begin\n'.format(d)
+        # body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
+        # body += '\t\t\t\t$display("{0} = %d", {0});\n'.format(d)
+        # body += '\t\t\tend\n'
 
     body += '\t\tend\n'
     body += "\tend";
@@ -237,6 +284,10 @@ class HWProgram:
     def add_instr(self, instr):
         self.instructions.append(instr)
 
+    def add_sub_loop(self, name, m, e):
+        assert(False)
+        # self.loop_root.children.append(Tree((name, Interval(m, e))));
+
     def add_loop(self, name, m, e):
         self.loop_root.children.append(Tree((name, Interval(m, e))));
 
@@ -273,14 +324,16 @@ class HWProgram:
         wr_num = 0
         for wr in self.writes:
             if wr.pred != "":
-                self.name_map[wr] = 'write_' + str(wr_num) + '_en'
-                self.event_map['write_' + str(wr_num) + '_en'] = wr.time
+                self.name_map[wr] = wr.time
+                # 'write_' + str(wr_num) + '_en'
+                # self.event_map['write_' + str(wr_num) + '_en'] = wr.time
+                self.event_map[wr.time] = wr.time
                 wr_num += 1
         print('name map: ', self.name_map)
         # print('All events that need an enable...')
         # for m in event_map:
             # print('\t', m, ':', event_map[m])
-        cp_mod = build_control_path(self.event_map, self.loop_bounds(), self.iis)
+        cp_mod = build_control_path(self.loop_root, self.event_map, self.loop_bounds(), self.iis)
         self.add_inst("control_path", cp_mod)
         # print('Control path...')
         print(cp_mod)
@@ -420,11 +473,8 @@ p.add_inst("world", world)
 p.add_loop("x", 0, 9)
 p.set_ii("x", quant(1, "valid"))
 
-wire_read_time = p.sched_expr(["x"], 0)
-read_in = p.read("world", "in", wire_read_time)
-
-wire_write_time = p.sched_expr(["x"], 0)
-out_write = p.write("world", {"res" : read_in}, "valid", wire_write_time)
+read_in = p.read("world", "in", "x")
+out_write = p.write("world", {"res" : read_in}, "valid", "x")
 
 p.synthesize_control_path()
 
@@ -444,11 +494,9 @@ p.add_inst("world", world)
 p.add_loop("x", 0, 9)
 p.set_ii("x", quant(2, "valid"))
 
-wire_read_time = p.sched_expr(["x"], 0)
-read_in = p.read("world", "in", wire_read_time)
+read_in = p.read("world", "in", "x")
 
-wire_write_time = p.sched_expr(["x"], 0)
-out_write = p.write("world", {"res" : read_in}, "valid", wire_write_time)
+out_write = p.write("world", {"res" : read_in}, "valid", "x")
 
 p.synthesize_control_path()
 
@@ -457,24 +505,25 @@ p.print_verilog()
 
 run_test(mod_name)
 
-# mod_name = "upsample_passthrough"
+mod_name = "upsample_passthrough"
 
-# p = HWProgram(mod_name);
-# world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
-# p.add_inst("world", world)
+p = HWProgram(mod_name);
+world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
+p.add_inst("world", world)
 
-# # How do we create an upsample?
-# #  1. Need to have an outer loop which reads every input, and an inner loop which writes the input twice
-# #  2. So maybe we need to have the inner loop with a fractional II?
-# #  3. If we have a fractional II what does that mean for the value of the clock?
+# How do we create an upsample?
+#  1. Need to have an outer loop which reads every input, and an inner loop which writes the input twice
+#  2. So maybe we need to have the inner loop with a fractional II?
+#  3. If we have a fractional II what does that mean for the value of the clock?
 # p.add_loop("x", 0, 9)
-# p.set_ii("x", 2)
+# p.set_ii("x", quant(1, "valid"))
 
-# wire_read_time = p.sched_expr(["x"], 0)
-# read_in = p.read("world", "in", wire_read_time)
+# p.add_sub_loop("x", "up_sample", 0, 1)
+# p.set_ii("up_sample", quant(1, "clock"))
 
-# wire_write_time = p.sched_expr(["x"], 0)
-# out_write = p.write("world", {"res" : read_in}, "valid", wire_write_time)
+# read_in = p.read("world", "in", "x")
+
+# out_write = p.write("world", {"res" : read_in}, "valid", "up_sample")
 
 # p.synthesize_control_path()
 
