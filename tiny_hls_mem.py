@@ -269,13 +269,13 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             else:
                 body += '\tassign {0}_happening = {1}_happening | (!{0}_done & {4} & ((({2} % {3} == 0) & {0}_started)));\n'.format(name, pred_name, elapsed, ii, ii_unit)
 
-                body += '\talways @(*) begin\n'
-                body += '\t\t$display("### Combinational change... {0}");\n'.format(name)
-                body += '\t\t$display("{0}_started = %d", {0}_started);\n'.format(name)
-                body += '\t\t$display("{0}_done = %d", {0}_done);\n'.format(name)
-                body += '\t\t$display("predecessor: ({0}_happening) = %d", {0}_happening);\n'.format(pred_name)
-                body += '\t\t$display("{0}_happening = %d, {0}_started = %d", {0}_happening, {0}_started);\n'.format(name)
-                body += '\tend\n'
+                # body += '\talways @(*) begin\n'
+                # body += '\t\t$display("### Combinational change... {0}");\n'.format(name)
+                # body += '\t\t$display("{0}_started = %d", {0}_started);\n'.format(name)
+                # body += '\t\t$display("{0}_done = %d", {0}_done);\n'.format(name)
+                # body += '\t\t$display("predecessor: ({0}_happening) = %d", {0}_happening);\n'.format(pred_name)
+                # body += '\t\t$display("{0}_happening = %d, {0}_started = %d", {0}_happening, {0}_started);\n'.format(name)
+                # body += '\tend\n'
                 
 
         body += '\n'
@@ -322,10 +322,10 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     body += '\n'
     for n in nodes:
         # body += '\t\t\t$display("{0} = %d", {0});\n'.format(n.data[0])
-        body += '\t\t\t$display("--- {0} Info");\n'.format(n.data[0])
-        body += '\t\t\t$display("{0}_iter      = %d", {0}_iter);\n'.format(n.data[0])
-        body += '\t\t\t$display("{0}_happening = %d", {0}_happening);\n'.format(n.data[0])
-        body += '\t\t\t$display("{0}_done      = %d", {0}_done);\n'.format(n.data[0])
+        # body += '\t\t\t$display("--- {0} Info");\n'.format(n.data[0])
+        # body += '\t\t\t$display("{0}_iter      = %d", {0}_iter);\n'.format(n.data[0])
+        # body += '\t\t\t$display("{0}_happening = %d", {0}_happening);\n'.format(n.data[0])
+        # body += '\t\t\t$display("{0}_done      = %d", {0}_done);\n'.format(n.data[0])
 
         body += assert_str(3, '{0}_iter <= {1}'.format(n.data[0], n.data[1].e))
         body += assert_str(3, '!{0}_done_this_cycle | {0}_at_trip_count'.format(n.data[0]))
