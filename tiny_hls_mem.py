@@ -175,13 +175,13 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
             units.append(name)
 
     body += '\t// Units of measurement\n'
-    body += '\tlogic {0}s_since_rst;\n'.format("clk")
+    body += '\tlogic [31:0] {0}s_since_rst;\n'.format("clk")
     for u in units:
-        body += '\tlogic {0}s_since_rst;\n'.format(u)
-        body += '\tlogic {0}s_before_last_clock_edge;\n'.format(u)
+        body += '\tlogic [31:0] {0}s_since_rst;\n'.format(u)
+        body += '\tlogic [31:0] {0}s_before_last_clock_edge;\n'.format(u)
 
     for u in units:
-        body += '\tassign {0}s_since_rst = {0}s_before_last_clock_edge + ({0} == 1);\n'.format(u)
+        body += '\tassign {0}s_since_rst = {0}s_before_last_clock_edge + {{31\'d0, ({0} == 1)}};\n'.format(u)
 
     body += '\n\t// Happening flags\n'
     for n in nodes:
@@ -204,6 +204,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
             children_done_strings.append(c.data[0] + '_done_this_cycle')
         body += '\tassign {0}_done_this_cycle = {0}_done | ({1} & {0}_at_trip_count);\n'.format(n.data[0], sep_list('(', ')', ' & ', children_done_strings))
         name = n.data[0]
+        # I need for root to be happening only the first time that its condition is true
         if name == "root":
             body += '\tassign {0}_happening = !{0}_done & ens_since_rst == 1 & en == 1;\n'.format(name)
         else:
@@ -294,8 +295,9 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
     for n in nodes:
         # body += '\t\t\t$display("{0} = %d", {0});\n'.format(n.data[0])
         body += '\t\t\t$display("{0}_iter = %d", {0}_iter);\n'.format(n.data[0])
+        body += '\t\t\t$display("{0}_happening = %d", {0}_happening);\n'.format(n.data[0])
+
         body += '\t\t\tif ({0}_done_this_cycle) begin\n'.format(n.data[0])
-        body += '\t\t\t$display("{0}_done == 1 now");\n'.format(n.data[0])
         body += '\t\t\t\t{0}_done <= 1;\n'.format(n.data[0])
         body += '\t\t\tend\n'
         body += '\n'
