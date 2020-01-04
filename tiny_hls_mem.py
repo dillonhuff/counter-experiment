@@ -167,6 +167,21 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     print('Delays:', delays)
     # assert(False)
 
+    edges = []
+    for n in nodes:
+        name = n.data[0]
+        if name in iis:
+            edges.append((name, name, iis[name]))
+        if name in delays:
+            if name in predecessors:
+                edges.append((predecessors[name].data[0], name, delays[name]))
+            else:
+                assert(name == "root")
+                edges.append(("rst", name, delays[name]))
+
+    print('Edges: ', edges)
+    # assert(False)
+
     pts = [inpt("clk"), inpt('rst'), inpt("en")]
     body = ""
     units = []
@@ -201,10 +216,16 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         body += '\tlogic {0}_done_this_cycle;\n'.format(name)
 
         body += '\tlogic {0}_at_trip_count;\n'.format(name)
-        if name in iis:
+        if name in delays:
             delay_unit = delays[name].unit
             body += '\tlogic [31:0] {1}s_elapsed_since_{0}_start;\n'.format(name, delay_unit)
             body += '\tlogic [31:0] {1}s_elapsed_between_{0}_start_and_last_clock_edge;\n'.format(name, delay_unit)
+
+        if name in iis:
+            delay_unit = iis[name].unit
+            if delay_unit != delays[name].unit:
+                body += '\tlogic [31:0] {1}s_elapsed_since_{0}_start;\n'.format(name, delay_unit)
+                body += '\tlogic [31:0] {1}s_elapsed_between_{0}_start_and_last_clock_edge;\n'.format(name, delay_unit)
         body += '\n'
     
     for n in nodes:
@@ -417,12 +438,20 @@ class HWProgram:
     def add_instr(self, instr):
         self.instructions.append(instr)
 
-    def add_sub_loop(self, name, m, e):
-        assert(False)
-        # self.loop_root.children.append(Tree((name, Interval(m, e))));
+    def add_sub_loop(self, predecessor, name, m, e):
+        nodes = all_nodes(self.loop_root)
+        found = False
+        for n in nodes:
+            if n.data[0] == predecessor:
+                n.children.append(Tree((name, Interval(m, e))))
+                self.set_delay(name, quant(0, 'en'))
+                found = True
+                break;
+        assert(found)
 
     def add_loop(self, name, m, e):
-        self.loop_root.children.append(Tree((name, Interval(m, e))));
+        self.loop_root.children.append(Tree((name, Interval(m, e))))
+        self.set_delay(name, quant(0, 'en'))
 
     def set_ii(self, name, ii):
         assert(isinstance(ii, DimQuantity))
@@ -650,19 +679,19 @@ p.add_inst("world", world)
 #  1. Need to have an outer loop which reads every input, and an inner loop which writes the input twice
 #  2. So maybe we need to have the inner loop with a fractional II?
 #  3. If we have a fractional II what does that mean for the value of the clock?
-# p.add_loop("x", 0, 9)
-# p.set_ii("x", quant(1, "valid"))
+p.add_loop("x", 0, 9)
+p.set_ii("x", quant(1, "en"))
 
-# p.add_sub_loop("x", "up_sample", 0, 1)
-# p.set_ii("up_sample", quant(1, "clock"))
+p.add_sub_loop("x", "up_sample", 0, 1)
+p.set_ii("up_sample", quant(1, "clk"))
 
-# read_in = p.read("world", "in", "x")
+read_in = p.read("world", "in", "x")
 
-# out_write = p.write("world", {"res" : read_in}, "valid", "up_sample")
+out_write = p.write("world", {"res" : read_in}, "valid", "up_sample")
 
-# p.synthesize_control_path()
+p.synthesize_control_path()
 
-# print('// Verilog...')
-# p.print_verilog()
+print('// Verilog...')
+p.print_verilog()
 
-# run_test(mod_name)
+run_test(mod_name)
