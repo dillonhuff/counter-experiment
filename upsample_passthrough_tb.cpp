@@ -45,17 +45,20 @@ int main() {
       p.clk = 0;
       p.eval();
 
-      cout << "----------------- Finished evaluating clk = 0 (" << i << ", " << j << ")" << endl;
+      //cout << "----------------- Finished evaluating clk = 0 (" << i << ", " << j << ")" << endl;
 
       if (p.x_valid) {
         num_x_valids++;
-        cout << "\tx valid at " << i << ", " << j << endl;
+        //cout << "\tx valid at " << i << ", " << j << endl;
       } else {
-        cout << "\tx not valid at " << i << ", " << j << endl;
+        //cout << "\tx not valid at " << i << ", " << j << endl;
       }
 
       if (p.valid == 1) {
         num_valids++;
+        cout << "\tup valid at " << i << ", " << j << endl;
+      } else {
+        cout << "\tup NOT valid at " << i << ", " << j << endl;
       }
 
       p.clk = 1;
