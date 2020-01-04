@@ -1,5 +1,16 @@
 import os
 
+# Now: I am struggling with the repeating conditions in this
+# controller. The objects in the control path are one bit signals
+# that go high at each time that they are visited.
+# What does that mean?
+# If node has II = 4 valid and starts 1 en off of b
+# that means that it becomes active whenever en is high
+# after the last time b was active.
+# It also becomes active for the interval between the arrival
+# of the 4th valid signal after it was active, and the clock
+# edge immediately after the 4th valid signal
+# So really an II can also be thought of as having a duration?
 class Tree(object):
     def __init__(self, data):
         self.data = data
@@ -682,7 +693,7 @@ run_test(mod_name)
 mod_name = "upsample_passthrough"
 
 p = HWProgram(mod_name);
-world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
+world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), inpt("x_valid"), outpt("in")], "")
 p.add_inst("world", world)
 
 # How do we create an upsample?
@@ -698,6 +709,7 @@ p.set_ii("up_sample", quant(1, "clk"))
 read_in = p.read("world", "in", "x")
 
 out_write = p.write("world", {"res" : read_in}, "valid", "up_sample")
+out_write = p.write("world", {}, "x_valid", "x")
 
 p.synthesize_control_path()
 

@@ -34,8 +34,8 @@ int main() {
 
   p.eval();
 
-
   int num_valids = 0;
+  int num_x_valids = 0;
   for (int i = 0; i < 10; i++) {
 
     for (int j = 0; j < 2; j++) {
@@ -47,6 +47,11 @@ int main() {
       p.clk = 1;
       p.eval();
 
+      if (p.x_valid) {
+        num_x_valids++;
+        cout << "\tx valid at " << i << ", " << j << endl;
+      }
+
       if (p.valid == 1) {
         num_valids++;
       }
@@ -54,8 +59,10 @@ int main() {
     }
   }
 
+  cout << "num_x_valids = " << num_x_valids << endl;
   cout << "num_valids = " << num_valids << endl;
 
+  assert(num_x_valids == 10);
   assert(num_valids == 20);
 
   cout << "Test passed" << endl;
