@@ -29,6 +29,8 @@ int main() {
 
   assert(p.valid == 0);
 
+  p.rst = 0;
+
   p.en = 1;
   p.eval();
 

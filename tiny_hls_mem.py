@@ -101,7 +101,7 @@ class Tree(object):
     def add_child(self, obj):
         self.children.append(obj)
 
-def build_control_path(event_map):
+def build_control_path(event_map, var_bounds):
     pts = [inpt("clk"), inpt('rst'), inpt("en")]
     for e in event_map:
         pts.append(outpt(e))
@@ -112,6 +112,7 @@ def build_control_path(event_map):
 
     body = ""
     body += '\treg [31:0] n_valids;\n'
+    body += '\treg done;\n'
     decls = []
     for pt in event_map:
         for var_name in event_map[pt].coeffs:
@@ -131,22 +132,35 @@ def build_control_path(event_map):
         body += '\tassign {0} = {0}_happened;\n'.format(e)
 
     body += '\n'
+
+    at_max_strings = []
+    for d in decls:
+        body += '\twire {0}_at_max;\n'.format(d)
+        d_max = var_bounds[d].e
+        body += '\tassign {0}_at_max = {0} == {1};\n'.format(d, d_max)
+        at_max_strings.append('{0}_at_max'.format(d));
+
+
+    body += '\twire done_this_cycle;\n'
+    body += '\tassign done_this_cycle = {0};\n'.format(sep_list('', '', ' & ', at_max_strings))
     
     for e in event_map:
-        body += '\tassign {0}_happened = ({1} == n_valids) & en;\n'.format(e, str(event_map[e]))
+        body += '\tassign {0}_happened = ({1} == n_valids) & en & !done;\n'.format(e, str(event_map[e]))
     body += '\n'
     body += "\talways @(posedge clk) begin\n"
     body += '\t\tif (rst) begin\n'
     body += '\t\t\tn_valids <= 0;\n'
+    body += '\t\t\tdone <= 0;\n'
     for d in decls:
         body += '\t\t\t{0} <= 0;\n'.format(d)
-    body += '\t\tend else if (en) begin\n'
+    body += '\t\tend else if (en & !done) begin\n'
+    body += '\t\t\tdone <= done_this_cycle;\n'
     body += '\t\t\tn_valids <= n_valids + 1;\n'
 
-    # for d in decls:
-        # body += "\t\t\tif ({0}) begin\n".format('/* II valids since update*/')
-        # body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
-        # body += "\t\t\tend\n"
+
+    for d in decls:
+        body += '\t\t\t{0} <= {0} + 1;\n'.format(d)
+        body += '\t\t\t$display("{0} = %d", {0});\n'.format(d)
 
     body += '\t\tend\n'
     body += "\tend";
@@ -189,7 +203,7 @@ class HWProgram:
         self.instructions.append(instr)
 
     def add_loop(self, name, m, e):
-        self.loop_root.children.append((name, Interval(m, e)))
+        self.loop_root.children.append(Tree((name, Interval(m, e))));
 
     def set_ii(self, name, ii):
         self.iis[name] = ii
@@ -200,6 +214,22 @@ class HWProgram:
             li.coeffs[ci] = self.iis[ci]
         li.d = d
         return li
+
+    def loop_bounds(self):
+        bounds = {}
+        children = [self.loop_root]
+        while len(children) > 0:
+            print('children: ', children)
+            next = children.pop()
+            print('next: ', next)
+
+            bounds[next.data[0]] = next.data[1]
+
+            print('Next has', len(next.children), 'children')            
+            for c in next.children:
+                print('Adding child: ', c)
+                children.append(c)
+        return bounds
 
     def synthesize_control_path(self):
         self.event_map = {}
@@ -214,7 +244,7 @@ class HWProgram:
         # print('All events that need an enable...')
         # for m in event_map:
             # print('\t', m, ':', event_map[m])
-        cp_mod = build_control_path(self.event_map)
+        cp_mod = build_control_path(self.event_map, self.loop_bounds())
         self.add_inst("control_path", cp_mod)
         # print('Control path...')
         print(cp_mod)
