@@ -154,7 +154,7 @@ def all_nodes(event_tree):
             children.append(c)
     return nodes 
 
-def build_control_path(event_tree, event_map, var_bounds, iis):
+def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     print('iis: ', iis)
     predecessors = {}
     nodes = all_nodes(event_tree)
@@ -164,6 +164,8 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
             predecessors[c.data[0]] = n
 
     print('Predecessors:', predecessors)
+    print('Delays:', delays)
+    # assert(False)
 
     pts = [inpt("clk"), inpt('rst'), inpt("en")]
     body = ""
@@ -190,14 +192,27 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
         pts.append(outpt(data[0]))
         body += '\tlogic [31:0] {0}_iter;\n'.format(name)
         body += '\tlogic {0}_happening;\n'.format(name)
+
+        body += '\tlogic {0}_started;\n'.format(name)
+        body += '\tlogic {0}_started_in_past_cycle;\n'.format(name)
+        body += '\tlogic {0}_starting_this_cycle;\n'.format(name)
+
         body += '\tlogic {0}_done;\n'.format(name)
         body += '\tlogic {0}_done_this_cycle;\n'.format(name)
+
         body += '\tlogic {0}_at_trip_count;\n'.format(name)
+        if name in iis:
+            delay_unit = delays[name].unit
+            body += '\tlogic {1}s_elapsed_since_{0}_start;\n'.format(name, delay_unit)
+            body += '\tlogic {1}s_elapsed_between_{0}_start_and_last_clock_edge;\n'.format(name, delay_unit)
         body += '\n'
     
     for n in nodes:
         body += '\tassign {0}_at_trip_count = {0}_iter == {1};\n'.format(n.data[0], n.data[1].e)
+        body += '\tassign {0}_started = {0}_starting_this_cycle | {0}_started_in_past_cycle;\n'.format(n.data[0])
+
         body += '\tassign {0} = {0}_happening;\n'.format(n.data[0])
+
         child_events = descendants(n)
         children_done_strings = ["1"]
         for c in child_events:
@@ -210,7 +225,15 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
         else:
             pred = predecessors[name]
             pred_name = pred.data[0]
-            body += '\tassign {0}_happening = !{0}_done & ({1}_happening);\n'.format(name, pred_name)
+            # Get II condition?
+            # Want to track: if the event being tracked happened in an earlier cycle, and if the time units elapsed since start
+            # is divisible by II and greater than 0?
+            iiv = iis[name]
+            ii = iiv.magnitude
+            ii_unit = iiv.unit
+            elapsed = '{0}s_elapsed_between_{1}_start_and_last_clock_edge'.format(ii_unit, name)
+            body += '\tassign {0}_starting_this_cycle = ({1}_happening);\n'.format(name, pred_name)
+            body += '\tassign {0}_happening = !{0}_done & ({1}_happening | (({2} % {3} == 0) & {0}_started));\n'.format(name, pred_name, elapsed, ii)
 
         body += '\n'
 
@@ -277,6 +300,11 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
     for n in nodes:
         body += '\t\t\t{0}_iter <= 0;\n'.format(n.data[0])
         body += '\t\t\t{0}_done <= 0;\n'.format(n.data[0])
+        body += '\t\t\t{0}_started_in_past_cycle <= 0;\n'.format(n.data[0])
+        name = n.data[0]
+        if name in iis:
+            delay_unit = delays[name].unit
+            body += '\t\t\t{1}s_elapsed_between_{0}_start_and_last_clock_edge <= 0;\n'.format(name, delay_unit)
 
     body += '\n'
     body += '\t\t\tclks_since_rst <= 0;\n'
@@ -290,6 +318,18 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
     for u in units:
         body += '\t\t\tif ({0}) begin\n'.format(u)
         body += '\t\t\t\t{0}s_before_last_clock_edge <= {0}s_before_last_clock_edge + 1;\n'.format(u)
+        body += '\n'
+        for n in nodes:
+            name = n.data[0]
+            if name in iis:
+                delay_unit = delays[name].unit
+                if delay_unit == u:
+
+                    body += '\t\t\t\tif ({0}_started) begin\n'.format(name)
+                    body += '\t\t\t\t\t{1}s_elapsed_between_{0}_start_and_last_clock_edge <= {1}s_elapsed_between_{0}_start_and_last_clock_edge + 1;\n'.format(name, delay_unit)
+                    body += '\t\t\t\tend\n'
+
+
         body += '\t\t\tend\n'
     body += '\n'
     for n in nodes:
@@ -297,6 +337,10 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
         body += '\t\t\t$display("{0}_iter = %d", {0}_iter);\n'.format(n.data[0])
         body += '\t\t\t$display("{0}_happening = %d", {0}_happening);\n'.format(n.data[0])
 
+        body += '\t\t\tif ({0}_starting_this_cycle) begin\n'.format(n.data[0])
+        body += '\t\t\t\t{0}_started_in_past_cycle <= 1;\n'.format(n.data[0])
+        body += '\t\t\tend\n'
+        body += '\n'
         body += '\t\t\tif ({0}_done_this_cycle) begin\n'.format(n.data[0])
         body += '\t\t\t\t{0}_done <= 1;\n'.format(n.data[0])
         body += '\t\t\tend\n'
@@ -350,9 +394,14 @@ class HWProgram:
         self.name = name
         self.instances = {}
         self.loop_root = Tree(("root", Interval(0, 0)))
+        self.delays = {}
+        self.set_delay("root", quant(1, "en"))
         self.reads = []
         self.writes = []
         self.iis = {}
+   
+    def set_delay(self, event_name, value):
+        self.delays[event_name] = value
 
     def add_inst(self, name, mod):
         self.instances[name] = mod
@@ -417,7 +466,7 @@ class HWProgram:
         # print('All events that need an enable...')
         # for m in event_map:
             # print('\t', m, ':', event_map[m])
-        cp_mod = build_control_path(self.loop_root, self.event_map, self.loop_bounds(), self.iis)
+        cp_mod = build_control_path(self.loop_root, self.event_map, self.loop_bounds(), self.iis, self.delays)
         self.add_inst("control_path", cp_mod)
         # print('Control path...')
         print(cp_mod)
@@ -556,6 +605,7 @@ p.add_inst("world", world)
 
 p.add_loop("x", 0, 9)
 p.set_ii("x", quant(1, "en"))
+p.set_delay("x", quant(0, "en"))
 
 read_in = p.read("world", "in", "x")
 out_write = p.write("world", {"res" : read_in}, "valid", "x")
