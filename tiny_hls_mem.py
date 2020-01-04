@@ -254,7 +254,8 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             ii_unit = iiv.unit
             elapsed = '{0}s_elapsed_between_{1}_start_and_last_clock_edge'.format(ii_unit, name)
             body += '\tassign {0}_starting_this_cycle = ({1}_happening);\n'.format(name, pred_name)
-            body += '\tassign {0}_happening = !{0}_done & ({1}_happening | (({2} % {3} == 0) & {0}_started));\n'.format(name, pred_name, elapsed, ii)
+            # body += '\tassign {0}_happening = !{0}_done & ({1}_happening | (({2} % {3} == 0) & {0}_started));\n'.format(name, pred_name, elapsed, ii)
+            body += '\tassign {0}_happening = {1}_happening | (!{0}_done & ((({2} % {3} == 0) & {0}_started)));\n'.format(name, pred_name, elapsed, ii)
 
         body += '\n'
 
