@@ -318,6 +318,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         body += '\t\t\t$display("{0}_happening = %d", {0}_happening);\n'.format(n.data[0])
 
         body += assert_str(3, '{0}_iter <= {1}'.format(n.data[0], n.data[1].e))
+        body += assert_str(3, '!{0}_done_this_cycle | {0}_at_trip_count'.format(n.data[0]))
         body += '\t\t\tif ({0}_starting_this_cycle) begin\n'.format(n.data[0])
         body += '\t\t\t\t{0}_started_in_past_cycle <= 1;\n'.format(n.data[0])
         body += '\t\t\tend\n'
@@ -332,6 +333,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         # When we re-start we must be at the trip count of the old loop
         body += assert_str(4, '{0}_at_trip_count'.format(n.data[0]))
         body += '\t\t\t\t{0}_iter <= 0;\n'.format(n.data[0])
+        body += '\t\t\t\t{0}_done <= 0;\n'.format(n.data[0])
         body += '\t\t\tend\n'
         body += '\n'
 
