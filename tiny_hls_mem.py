@@ -1,16 +1,5 @@
 import os
 
-# Now: I am struggling with the repeating conditions in this
-# controller. The objects in the control path are one bit signals
-# that go high at each time that they are visited.
-# What does that mean?
-# If node has II = 4 valid and starts 1 en off of b
-# that means that it becomes active whenever en is high
-# after the last time b was active.
-# It also becomes active for the interval between the arrival
-# of the 4th valid signal after it was active, and the clock
-# edge immediately after the 4th valid signal
-# So really an II can also be thought of as having a duration?
 class Tree(object):
     def __init__(self, data):
         self.data = data
@@ -164,7 +153,16 @@ def all_nodes(event_tree):
             # print('Adding child: ', c)
             children.append(c)
     return nodes 
+def tab(i):
+    str = ''
+    for x in range(0, i):
+        str += '\t'
+    return str
 
+def assert_str(ind, cond):
+    return tab(ind) + 'if (!({0})) begin $display("Assertion FAILED: {0}"); $finish(1); end\n'.format(cond)
+
+# Add assertions?
 def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     print('iis: ', iis)
     predecessors = {}
@@ -276,61 +274,6 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
 
 
     body += '\n'
-    # Done this cycle: all lower nodes are done and we are at trip count?
-    # for e in event_map:
-        # pts.append(outpt(e))
-
-    # ptstrings = []
-    # for pt in pts:
-        # ptstrings.append(pt_verilog(pt))
-
-    # body += '\treg [31:0] n_valids;\n'
-    # body += '\treg done;\n'
-    # decls = []
-    # for pt in event_map:
-        # for var_name in event_map[pt].coeffs:
-            # if not var_name in decls:
-                # decls.append(var_name)
-
-    # for e in event_map:
-        # body += '\twire {0}_happened;\n'.format(e)
-
-    # body += '\n'
-    # for d in decls:
-        # body += '\treg [31:0] {0};\n'.format(d)
-        # body += '\twire {0}_inc_happened;\n'.format(d)
-        # d_ii = iis[d].magnitude
-        # body += '\tassign {0}_inc_happened = ({0} * {1} == n_valids) & en & !done;\n'.format(d, d_ii)
-
-    # body += '\n'
-    # # for d in decls:
-        # # body += '\tassign ' + d[0] + ' = ' + d[1] + ';\n'
-    # for e in event_map:
-        # body += '\tassign {0} = {0}_happened;\n'.format(e)
-
-    # body += '\n'
-
-    # at_max_strings = []
-    # for d in decls:
-        # body += '\twire {0}_at_max;\n'.format(d)
-        # d_max = var_bounds[d].e
-        # body += '\tassign {0}_at_max = {0} == {1};\n'.format(d, d_max)
-        # at_max_strings.append('{0}_at_max'.format(d));
-
-
-    # body += '\twire done_this_cycle;\n'
-    # body += '\tassign done_this_cycle = {0};\n'.format(sep_list('', '', ' & ', at_max_strings))
-    
-    # for e in event_map:
-        # do_vars = []
-        # for coeff in event_map[e].coeffs:
-            # do_vars.append(coeff + '_inc_happened')
-
-        # do_str = sep_list('(', ')', ' & ', do_vars)
-        
-        # body += '\tassign {0}_happened = {1} & en & !done;\n'.format(e, do_str)
-        # # body += '\tassign {0}_happened = ({1} == n_valids) & en & !done;\n'.format(e, str(event_map[e]))
-    # body += '\n'
     body += "\talways @(posedge clk) begin\n"
 
     body += '\t\tif (rst) begin\n'
@@ -382,10 +325,10 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         body += '\t\t\t\t{0}_done <= 1;\n'.format(n.data[0])
         body += '\t\t\tend\n'
         body += '\n'
-        body += '\t\t\tif ({0}_happening & !{0}_at_trip_count) begin\n'.format(n.data[0])
+        body += '\t\t\tif ({0}_happening & {0}_at_trip_count) begin\n'.format(n.data[0])
         body += '\t\t\t\t{0}_iter <= {0}_iter + 1;\n'.format(n.data[0])
         body += '\t\t\tend else if ({0}_starting_this_cycle) begin\n'.format(n.data[0])
-        # TODO: Assert {0}_at_trip_count?
+        body += assert_str(4, '!{0}_at_trip_count'.format(n.data[0]))
         body += '\t\t\t\t{0}_iter <= 0;\n'.format(n.data[0])
         body += '\t\t\tend\n'
         body += '\n'
@@ -395,26 +338,6 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     body += '\n'
     body += '\t\tend\n'
 
-    # body += '\t\tif (rst) begin\n'
-    # body += '\t\t\tclks_since_rst <= 0;\n'
-    # # body += '\t\t\tn_valids <= 0;\n'
-    # # body += '\t\t\tdone <= 0;\n'
-    # # for d in decls:
-        # # body += '\t\t\t{0} <= 0;\n'.format(d)
-    # body += '\t\tend else if (en & !root_done) begin\n'
-    # body += '\t\t\tclks_since_rst <= clks_since_rst + 1;\n'
-    # # body += '\t\t\tdone <= done_this_cycle;\n'
-    # # body += '\t\t\tn_valids <= n_valids + 1;\n'
-    # # body += '\t\t\t$display("{0} = %d", {0});\n'.format('n_valids')
-
-
-    # # for d in decls:
-        # # body += '\t\t\tif ({0}_inc_happened) begin\n'.format(d)
-        # # body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
-        # # body += '\t\t\t\t$display("{0} = %d", {0});\n'.format(d)
-        # # body += '\t\t\tend\n'
-
-    # body += '\t\tend\n'
     body += "\tend";
 
     return Module('control_path', pts, body)
