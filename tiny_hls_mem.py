@@ -205,11 +205,11 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
         body += '\tassign {0}_done_this_cycle = {0}_done | ({1} & {0}_at_trip_count);\n'.format(n.data[0], sep_list('(', ')', ' & ', children_done_strings))
         name = n.data[0]
         if name == "root":
-            body += '\tassign {0}_happening = ens_since_rst == 1 & en == 1;\n'.format(name)
+            body += '\tassign {0}_happening = !{0}_done & ens_since_rst == 1 & en == 1;\n'.format(name)
         else:
             pred = predecessors[name]
             pred_name = pred.data[0]
-            body += '\tassign {0}_happening = {1}_happening;\n'.format(name, pred_name)
+            body += '\tassign {0}_happening = !{0}_done & ({1}_happening);\n'.format(name, pred_name)
 
         body += '\n'
 
@@ -292,11 +292,14 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
         body += '\t\t\tend\n'
     body += '\n'
     for n in nodes:
+        # body += '\t\t\t$display("{0} = %d", {0});\n'.format(n.data[0])
+        body += '\t\t\t$display("{0}_iter = %d", {0}_iter);\n'.format(n.data[0])
         body += '\t\t\tif ({0}_done_this_cycle) begin\n'.format(n.data[0])
+        body += '\t\t\t$display("{0}_done == 1 now");\n'.format(n.data[0])
         body += '\t\t\t\t{0}_done <= 1;\n'.format(n.data[0])
         body += '\t\t\tend\n'
         body += '\n'
-        body += '\t\t\tif ({0}_happening) begin\n'.format(n.data[0])
+        body += '\t\t\tif ({0}_happening & !{0}_at_trip_count) begin\n'.format(n.data[0])
         body += '\t\t\t\t{0}_iter <= {0}_iter + 1;\n'.format(n.data[0])
         body += '\t\t\tend\n'
         body += '\n'
