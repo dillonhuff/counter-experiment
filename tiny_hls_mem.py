@@ -1,5 +1,34 @@
 import os
 
+class Tree(object):
+    def __init__(self, data):
+        self.data = data
+        self.children = []
+
+    def add_child(self, obj):
+        self.children.append(obj)
+
+# Control path must be?
+class DimQuantity:
+
+    def __init__(self, magnitude, unit):
+        self.magnitude = magnitude
+        self.unit = unit
+
+    def __repr__(self):
+        return str(self.magnitude) + ' ' + self.unit
+
+def quant(mag, unit):
+    return DimQuantity(mag, unit)
+
+class ControlNode:
+
+    def __init__(self, name, trip_count, delay_from_parent, ii):
+        self.name = name
+        self.trip_count = trip_count
+        self.delay_from_parent = delay_from_parent
+        self.ii = ii
+
 def run_cmd(cmd):
     print('Running:', cmd)
     res = os.system(cmd)
@@ -93,14 +122,6 @@ class HWWrite:
 def sep_list(ld, rd, sep, strings):
     return ld + sep.join(strings) + rd
 
-class Tree(object):
-    def __init__(self, data):
-        self.data = data
-        self.children = []
-
-    def add_child(self, obj):
-        self.children.append(obj)
-
 def build_control_path(event_map, var_bounds, iis):
     pts = [inpt("clk"), inpt('rst'), inpt("en")]
     for e in event_map:
@@ -126,7 +147,7 @@ def build_control_path(event_map, var_bounds, iis):
     for d in decls:
         body += '\treg [31:0] {0};\n'.format(d)
         body += '\twire {0}_inc_happened;\n'.format(d)
-        d_ii = iis[d]
+        d_ii = iis[d].magnitude
         body += '\tassign {0}_inc_happened = ({0} * {1} == n_valids) & en & !done;\n'.format(d, d_ii)
 
     body += '\n'
@@ -220,6 +241,7 @@ class HWProgram:
         self.loop_root.children.append(Tree((name, Interval(m, e))));
 
     def set_ii(self, name, ii):
+        assert(isinstance(ii, DimQuantity))
         self.iis[name] = ii
 
     def sched_expr(self, loops, d):
@@ -396,7 +418,7 @@ world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"
 p.add_inst("world", world)
 
 p.add_loop("x", 0, 9)
-p.set_ii("x", 1)
+p.set_ii("x", quant(1, "valid"))
 
 wire_read_time = p.sched_expr(["x"], 0)
 read_in = p.read("world", "in", wire_read_time)
@@ -420,7 +442,7 @@ world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"
 p.add_inst("world", world)
 
 p.add_loop("x", 0, 9)
-p.set_ii("x", 2)
+p.set_ii("x", quant(2, "valid"))
 
 wire_read_time = p.sched_expr(["x"], 0)
 read_in = p.read("world", "in", wire_read_time)
@@ -434,3 +456,29 @@ print('// Verilog...')
 p.print_verilog()
 
 run_test(mod_name)
+
+# mod_name = "upsample_passthrough"
+
+# p = HWProgram(mod_name);
+# world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
+# p.add_inst("world", world)
+
+# # How do we create an upsample?
+# #  1. Need to have an outer loop which reads every input, and an inner loop which writes the input twice
+# #  2. So maybe we need to have the inner loop with a fractional II?
+# #  3. If we have a fractional II what does that mean for the value of the clock?
+# p.add_loop("x", 0, 9)
+# p.set_ii("x", 2)
+
+# wire_read_time = p.sched_expr(["x"], 0)
+# read_in = p.read("world", "in", wire_read_time)
+
+# wire_write_time = p.sched_expr(["x"], 0)
+# out_write = p.write("world", {"res" : read_in}, "valid", wire_write_time)
+
+# p.synthesize_control_path()
+
+# print('// Verilog...')
+# p.print_verilog()
+
+# run_test(mod_name)
