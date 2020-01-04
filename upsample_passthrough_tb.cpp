@@ -31,9 +31,9 @@ int main() {
   assert(p.valid == 0);
 
   p.rst = 0;
-
   p.eval();
 
+  cout << "--- Starting loop" << endl;
   int num_valids = 0;
   int num_x_valids = 0;
   for (int i = 0; i < 20; i++) {
