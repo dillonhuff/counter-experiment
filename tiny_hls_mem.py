@@ -122,6 +122,23 @@ class HWWrite:
 def sep_list(ld, rd, sep, strings):
     return ld + sep.join(strings) + rd
 
+def descendants(event_tree):
+    children = []
+    for c in event_tree.children:
+        children.append(c)
+    nodes = []
+    while len(children) > 0:
+        # print('children: ', children)
+        next = children.pop()
+        nodes.append(next)
+        # print('next: ', next)
+
+        # print('Next has', len(next.children), 'children')            
+        for c in next.children:
+            # print('Adding child: ', c)
+            children.append(c)
+    return nodes 
+
 def all_nodes(event_tree):
     children = [event_tree]
     nodes = []
@@ -177,12 +194,25 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
         body += '\tlogic {0}_done_this_cycle;\n'.format(name)
         body += '\tlogic {0}_at_trip_count;\n'.format(name)
         body += '\n'
-
-
     
     for n in nodes:
         body += '\tassign {0}_at_trip_count = {0}_iter == {1};\n'.format(n.data[0], n.data[1].e)
         body += '\tassign {0} = {0}_happening;\n'.format(n.data[0])
+        child_events = descendants(n)
+        children_done_strings = ["1"]
+        for c in child_events:
+            children_done_strings.append(c.data[0] + '_done_this_cycle')
+        body += '\tassign {0}_done_this_cycle = {0}_done | ({1} & {0}_at_trip_count);\n'.format(n.data[0], sep_list('(', ')', ' & ', children_done_strings))
+        name = n.data[0]
+        if name == "root":
+            body += '\tassign {0}_happening = ens_since_rst == 1 & en == 1;\n'.format(name)
+        else:
+            pred = predecessors[name]
+            pred_name = pred.data[0]
+            body += '\tassign {0}_happening = {1}_happening;\n'.format(name, pred_name)
+
+        body += '\n'
+
 
     body += '\n'
     # Done this cycle: all lower nodes are done and we are at trip count?
