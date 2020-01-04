@@ -203,8 +203,8 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         body += '\tlogic {0}_at_trip_count;\n'.format(name)
         if name in iis:
             delay_unit = delays[name].unit
-            body += '\tlogic {1}s_elapsed_since_{0}_start;\n'.format(name, delay_unit)
-            body += '\tlogic {1}s_elapsed_between_{0}_start_and_last_clock_edge;\n'.format(name, delay_unit)
+            body += '\tlogic [31:0] {1}s_elapsed_since_{0}_start;\n'.format(name, delay_unit)
+            body += '\tlogic [31:0] {1}s_elapsed_between_{0}_start_and_last_clock_edge;\n'.format(name, delay_unit)
         body += '\n'
     
     for n in nodes:
@@ -627,6 +627,7 @@ p.add_inst("world", world)
 
 p.add_loop("x", 0, 9)
 p.set_ii("x", quant(2, "en"))
+p.set_delay("x", quant(0, "en"))
 
 read_in = p.read("world", "in", "x")
 
