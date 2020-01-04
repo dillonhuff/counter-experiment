@@ -163,13 +163,29 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
         body += '\tlogic {0}s_since_rst;\n'.format(u)
         body += '\tlogic {0}s_before_last_clock_edge;\n'.format(u)
 
+    for u in units:
+        body += '\tassign {0}s_since_rst = {0}s_before_last_clock_edge + ({0} == 1);\n'.format(u)
+
     body += '\n\t// Happening flags\n'
     for n in nodes:
         data = n.data
         name = data[0]
         pts.append(outpt(data[0]))
+        body += '\tlogic [31:0] {0}_iter;\n'.format(name)
         body += '\tlogic {0}_happening;\n'.format(name)
         body += '\tlogic {0}_done;\n'.format(name)
+        body += '\tlogic {0}_done_this_cycle;\n'.format(name)
+        body += '\tlogic {0}_at_trip_count;\n'.format(name)
+        body += '\n'
+
+
+    
+    for n in nodes:
+        body += '\tassign {0}_at_trip_count = {0}_iter == {1};\n'.format(n.data[0], n.data[1].e)
+        body += '\tassign {0} = {0}_happening;\n'.format(n.data[0])
+
+    body += '\n'
+    # Done this cycle: all lower nodes are done and we are at trip count?
     # for e in event_map:
         # pts.append(outpt(e))
 
@@ -225,26 +241,59 @@ def build_control_path(event_tree, event_map, var_bounds, iis):
         # # body += '\tassign {0}_happened = ({1} == n_valids) & en & !done;\n'.format(e, str(event_map[e]))
     # body += '\n'
     body += "\talways @(posedge clk) begin\n"
+
     body += '\t\tif (rst) begin\n'
+    for n in nodes:
+        body += '\t\t\t{0}_iter <= 0;\n'.format(n.data[0])
+        body += '\t\t\t{0}_done <= 0;\n'.format(n.data[0])
+
+    body += '\n'
     body += '\t\t\tclks_since_rst <= 0;\n'
-    # body += '\t\t\tn_valids <= 0;\n'
-    # body += '\t\t\tdone <= 0;\n'
-    # for d in decls:
-        # body += '\t\t\t{0} <= 0;\n'.format(d)
-    body += '\t\tend else if (en & !root_done) begin\n'
-    body += '\t\t\tclks_since_rst <= clks_since_rst;\n'
-    # body += '\t\t\tdone <= done_this_cycle;\n'
-    # body += '\t\t\tn_valids <= n_valids + 1;\n'
-    # body += '\t\t\t$display("{0} = %d", {0});\n'.format('n_valids')
+    body += '\n'
+    for u in units:
+        body += '\t\t\t{0}s_before_last_clock_edge <= 0;\n'.format(u)
+    body += '\t\tend begin\n'
+    body += '\n'
+    body += '\t\t\tclks_since_rst <= clks_since_rst + 1;\n'
+    body += '\n'
+    for u in units:
+        body += '\t\t\tif ({0}) begin\n'.format(u)
+        body += '\t\t\t\t{0}s_before_last_clock_edge <= {0}s_before_last_clock_edge + 1;\n'.format(u)
+        body += '\t\t\tend\n'
+    body += '\n'
+    for n in nodes:
+        body += '\t\t\tif ({0}_done_this_cycle) begin\n'.format(n.data[0])
+        body += '\t\t\t\t{0}_done <= 1;\n'.format(n.data[0])
+        body += '\t\t\tend\n'
+        body += '\n'
+        body += '\t\t\tif ({0}_happening) begin\n'.format(n.data[0])
+        body += '\t\t\t\t{0}_iter <= {0}_iter + 1;\n'.format(n.data[0])
+        body += '\t\t\tend\n'
+        body += '\n'
 
-
-    # for d in decls:
-        # body += '\t\t\tif ({0}_inc_happened) begin\n'.format(d)
-        # body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
-        # body += '\t\t\t\t$display("{0} = %d", {0});\n'.format(d)
-        # body += '\t\t\tend\n'
-
+    body += '\n'
     body += '\t\tend\n'
+
+    # body += '\t\tif (rst) begin\n'
+    # body += '\t\t\tclks_since_rst <= 0;\n'
+    # # body += '\t\t\tn_valids <= 0;\n'
+    # # body += '\t\t\tdone <= 0;\n'
+    # # for d in decls:
+        # # body += '\t\t\t{0} <= 0;\n'.format(d)
+    # body += '\t\tend else if (en & !root_done) begin\n'
+    # body += '\t\t\tclks_since_rst <= clks_since_rst + 1;\n'
+    # # body += '\t\t\tdone <= done_this_cycle;\n'
+    # # body += '\t\t\tn_valids <= n_valids + 1;\n'
+    # # body += '\t\t\t$display("{0} = %d", {0});\n'.format('n_valids')
+
+
+    # # for d in decls:
+        # # body += '\t\t\tif ({0}_inc_happened) begin\n'.format(d)
+        # # body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
+        # # body += '\t\t\t\t$display("{0} = %d", {0});\n'.format(d)
+        # # body += '\t\t\tend\n'
+
+    # body += '\t\tend\n'
     body += "\tend";
 
     return Module('control_path', pts, body)
@@ -471,7 +520,7 @@ world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"
 p.add_inst("world", world)
 
 p.add_loop("x", 0, 9)
-p.set_ii("x", quant(1, "valid"))
+p.set_ii("x", quant(1, "en"))
 
 read_in = p.read("world", "in", "x")
 out_write = p.write("world", {"res" : read_in}, "valid", "x")
@@ -492,7 +541,7 @@ world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"
 p.add_inst("world", world)
 
 p.add_loop("x", 0, 9)
-p.set_ii("x", quant(2, "valid"))
+p.set_ii("x", quant(2, "en"))
 
 read_in = p.read("world", "in", "x")
 
