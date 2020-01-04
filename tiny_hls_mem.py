@@ -344,7 +344,7 @@ p.add_inst("world", world)
 # reg = Module("reg_1", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d"), outpt("q")], "")
 # p.add_inst("data", reg)
 
-p.add_loop("x", 0, 10)
+p.add_loop("x", 0, 9)
 p.set_ii("x", 1)
 
 wire_read_time = p.sched_expr(["x"], 0)

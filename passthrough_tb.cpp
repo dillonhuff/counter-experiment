@@ -33,6 +33,24 @@ int main() {
   p.eval();
 
   assert(p.valid == 1);
-  
+
+  int num_valids = 0;
+  for (int i = 0; i < 20; i++) {
+
+    if (p.valid == 1) {
+      num_valids++;
+    }
+
+    p.clk = 0;
+    p.eval();
+    
+    p.clk = 1;
+    p.eval();
+  }
+
+  cout << "num_valids = " << num_valids << endl;
+
+  assert(num_valids == 10);
+
   cout << "Test passed" << endl;
 }
