@@ -255,7 +255,11 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             elapsed = '{0}s_elapsed_between_{1}_start_and_last_clock_edge'.format(ii_unit, name)
             body += '\tassign {0}_starting_this_cycle = ({1}_happening);\n'.format(name, pred_name)
             # body += '\tassign {0}_happening = !{0}_done & ({1}_happening | (({2} % {3} == 0) & {0}_started));\n'.format(name, pred_name, elapsed, ii)
-            body += '\tassign {0}_happening = {1}_happening | (!{0}_done & ((({2} % {3} == 0) & {0}_started)));\n'.format(name, pred_name, elapsed, ii)
+            if ii_unit == "clk":
+                body += '\tassign {0}_happening = {1}_happening | (!{0}_done & ((({2} % {3} == 0) & {0}_started)));\n'.format(name, pred_name, elapsed, ii)
+            else:
+                body += '\tassign {0}_happening = {1}_happening | (!{0}_done & {4} & ((({2} % {3} == 0) & {0}_started)));\n'.format(name, pred_name, elapsed, ii, ii_unit)
+                
 
         body += '\n'
 
@@ -325,7 +329,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         body += '\t\t\t{0}_started_in_past_cycle <= 0;\n'.format(n.data[0])
         name = n.data[0]
         if name in iis:
-            delay_unit = delays[name].unit
+            delay_unit = iis[name].unit
             body += '\t\t\t{1}s_elapsed_between_{0}_start_and_last_clock_edge <= 0;\n'.format(name, delay_unit)
 
     body += '\n'
@@ -344,7 +348,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         for n in nodes:
             name = n.data[0]
             if name in iis:
-                delay_unit = delays[name].unit
+                delay_unit = iis[name].unit
                 if delay_unit == u:
 
                     body += '\t\t\t\tif ({0}_started) begin\n'.format(name)
@@ -369,7 +373,12 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         body += '\n'
         body += '\t\t\tif ({0}_happening & !{0}_at_trip_count) begin\n'.format(n.data[0])
         body += '\t\t\t\t{0}_iter <= {0}_iter + 1;\n'.format(n.data[0])
+        body += '\t\t\tend else if ({0}_starting_this_cycle) begin\n'.format(n.data[0])
+        # TODO: Assert {0}_at_trip_count?
+        body += '\t\t\t\t{0}_iter <= 0;\n'.format(n.data[0])
         body += '\t\t\tend\n'
+        body += '\n'
+
         body += '\n'
 
     body += '\n'

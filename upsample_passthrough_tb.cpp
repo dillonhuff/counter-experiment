@@ -56,7 +56,7 @@ int main() {
 
   cout << "num_valids = " << num_valids << endl;
 
-  assert(num_valids == 5);
+  assert(num_valids == 20);
 
   cout << "Test passed" << endl;
 }
