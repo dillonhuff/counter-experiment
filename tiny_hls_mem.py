@@ -371,9 +371,6 @@ p = HWProgram(mod_name);
 world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
 p.add_inst("world", world)
 
-# reg = Module("reg_1", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d"), outpt("q")], "")
-# p.add_inst("data", reg)
-
 p.add_loop("x", 0, 9)
 p.set_ii("x", 1)
 

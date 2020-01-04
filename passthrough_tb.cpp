@@ -37,10 +37,14 @@ int main() {
   assert(p.valid == 1);
 
   int num_valids = 0;
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < 30; i++) {
 
     if (p.valid == 1) {
       num_valids++;
+    }
+
+    if (i % 3) {
+      p.en = p.en == 0 ? 1 : 0;
     }
 
     p.clk = 0;
