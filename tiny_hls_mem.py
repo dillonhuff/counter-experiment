@@ -1,3 +1,12 @@
+import os
+
+def run_cmd(cmd):
+    print('Running:', cmd)
+    res = os.system(cmd)
+    if (res != 0):
+        print( 'ERROR: ' + cmd + ' failed' )
+        assert(False)
+
 class LinearExpr:
 
     def __init__(self):
@@ -124,7 +133,7 @@ def build_control_path(event_map):
     body += '\n'
     
     for e in event_map:
-        body += '\tassign {0}_happened = {1} == n_valids;\n'.format(e, str(event_map[e]))
+        body += '\tassign {0}_happened = ({1} == n_valids) & en;\n'.format(e, str(event_map[e]))
     body += '\n'
     body += "\talways @(posedge clk) begin\n"
     body += '\t\tif (rst) begin\n'
@@ -285,7 +294,7 @@ class HWProgram:
             writes = pred_ports_to_writes[pred_pt_i]
             if len(writes) == 1:
                 pred_pt_name = pt_underscore_str(inst, pred_pt)
-                istr += '\tassign {0} = {1};\n'.format(pred_pt_name, self.name_map[writes[0]])
+                istr += '\tassign {0} = {1};\n'.format(pred_pt_name, pt_underscore_str('control_path', self.name_map[writes[0]]))
             else:
                 print('Error: More than one write uses predicate: {0}'.format(pred_pt))
                 assert(False)
@@ -327,23 +336,22 @@ def is_in_pt(pt):
 def inpt(name):
     return (name, False, 1)
 
-p = HWProgram('reg_read_10');
+mod_name = "passthrough"
+p = HWProgram(mod_name);
 world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
 p.add_inst("world", world)
 
-reg = Module("reg_1", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d"), outpt("q")], "")
-p.add_inst("data", reg)
+# reg = Module("reg_1", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d"), outpt("q")], "")
+# p.add_inst("data", reg)
 
 p.add_loop("x", 0, 10)
-p.set_ii("x", 2)
+p.set_ii("x", 1)
 
 wire_read_time = p.sched_expr(["x"], 0)
 read_in = p.read("world", "in", wire_read_time)
-reg_write = p.write("data", {"d" : read_in}, "en", wire_read_time)
 
-wire_write_time = p.sched_expr(["x"], 1)
-reg_val = p.read("data", "q", wire_write_time)
-out_write = p.write("world", {"res" : reg_val}, "valid", wire_write_time)
+wire_write_time = p.sched_expr(["x"], 0)
+out_write = p.write("world", {"res" : read_in}, "valid", wire_write_time)
 
 p.synthesize_control_path()
 
@@ -351,3 +359,12 @@ print('// Verilog...')
 p.print_verilog()
 
 print('Done.')
+
+main_name = "passthrough_tb.cpp"
+v_command = "verilator -Wno-DECLFILENAME --cc " + mod_name + ".v builtins.v --exe " + main_name + " --top-module " + mod_name + " -CFLAGS -std=c++14 -CFLAGS -march=native"
+run_cmd(v_command)
+
+m_command = "make -C obj_dir -j -f V" + mod_name + ".mk V" + mod_name
+run_cmd(m_command)
+
+run_cmd('./obj_dir/V' + mod_name)
