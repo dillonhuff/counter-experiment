@@ -101,7 +101,7 @@ class Tree(object):
     def add_child(self, obj):
         self.children.append(obj)
 
-def build_control_path(event_map, var_bounds):
+def build_control_path(event_map, var_bounds, iis):
     pts = [inpt("clk"), inpt('rst'), inpt("en")]
     for e in event_map:
         pts.append(outpt(e))
@@ -125,6 +125,10 @@ def build_control_path(event_map, var_bounds):
     body += '\n'
     for d in decls:
         body += '\treg [31:0] {0};\n'.format(d)
+        body += '\twire {0}_inc_happened;\n'.format(d)
+        d_ii = iis[d]
+        body += '\tassign {0}_inc_happened = ({0} * {1} == n_valids) & en & !done;\n'.format(d, d_ii)
+
     body += '\n'
     # for d in decls:
         # body += '\tassign ' + d[0] + ' = ' + d[1] + ';\n'
@@ -145,7 +149,14 @@ def build_control_path(event_map, var_bounds):
     body += '\tassign done_this_cycle = {0};\n'.format(sep_list('', '', ' & ', at_max_strings))
     
     for e in event_map:
-        body += '\tassign {0}_happened = ({1} == n_valids) & en & !done;\n'.format(e, str(event_map[e]))
+        do_vars = []
+        for coeff in event_map[e].coeffs:
+            do_vars.append(coeff + '_inc_happened')
+
+        do_str = sep_list('(', ')', ' & ', do_vars)
+        
+        body += '\tassign {0}_happened = {1} & en & !done;\n'.format(e, do_str)
+        # body += '\tassign {0}_happened = ({1} == n_valids) & en & !done;\n'.format(e, str(event_map[e]))
     body += '\n'
     body += "\talways @(posedge clk) begin\n"
     body += '\t\tif (rst) begin\n'
@@ -156,11 +167,14 @@ def build_control_path(event_map, var_bounds):
     body += '\t\tend else if (en & !done) begin\n'
     body += '\t\t\tdone <= done_this_cycle;\n'
     body += '\t\t\tn_valids <= n_valids + 1;\n'
+    body += '\t\t\t$display("{0} = %d", {0});\n'.format('n_valids')
 
 
     for d in decls:
-        body += '\t\t\t{0} <= {0} + 1;\n'.format(d)
-        body += '\t\t\t$display("{0} = %d", {0});\n'.format(d)
+        body += '\t\t\tif ({0}_inc_happened) begin\n'.format(d)
+        body += '\t\t\t\t{0} <= {0} + 1;\n'.format(d)
+        body += '\t\t\t\t$display("{0} = %d", {0});\n'.format(d)
+        body += '\t\t\tend\n'
 
     body += '\t\tend\n'
     body += "\tend";
@@ -244,7 +258,7 @@ class HWProgram:
         # print('All events that need an enable...')
         # for m in event_map:
             # print('\t', m, ':', event_map[m])
-        cp_mod = build_control_path(self.event_map, self.loop_bounds())
+        cp_mod = build_control_path(self.event_map, self.loop_bounds(), self.iis)
         self.add_inst("control_path", cp_mod)
         # print('Control path...')
         print(cp_mod)
@@ -366,6 +380,16 @@ def is_in_pt(pt):
 def inpt(name):
     return (name, False, 1)
 
+def run_test(mname):
+    main_name = "{0}_tb.cpp".format(mname)
+    v_command = "verilator -Wno-DECLFILENAME --cc " + mname + ".v builtins.v --exe " + main_name + " --top-module " + mname + " -CFLAGS -std=c++14 -CFLAGS -march=native"
+    run_cmd(v_command)
+
+    m_command = "make -C obj_dir -j -f V" + mname + ".mk V" + mname 
+    run_cmd(m_command)
+
+    run_cmd('./obj_dir/V' + mname)
+
 mod_name = "passthrough"
 p = HWProgram(mod_name);
 world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
@@ -385,13 +409,28 @@ p.synthesize_control_path()
 print('// Verilog...')
 p.print_verilog()
 
+run_test(mod_name)
+
 print('Done.')
 
-main_name = "passthrough_tb.cpp"
-v_command = "verilator -Wno-DECLFILENAME --cc " + mod_name + ".v builtins.v --exe " + main_name + " --top-module " + mod_name + " -CFLAGS -std=c++14 -CFLAGS -march=native"
-run_cmd(v_command)
+mod_name = "downsample_passthrough"
 
-m_command = "make -C obj_dir -j -f V" + mod_name + ".mk V" + mod_name
-run_cmd(m_command)
+p = HWProgram(mod_name);
+world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
+p.add_inst("world", world)
 
-run_cmd('./obj_dir/V' + mod_name)
+p.add_loop("x", 0, 9)
+p.set_ii("x", 2)
+
+wire_read_time = p.sched_expr(["x"], 0)
+read_in = p.read("world", "in", wire_read_time)
+
+wire_write_time = p.sched_expr(["x"], 0)
+out_write = p.write("world", {"res" : read_in}, "valid", wire_write_time)
+
+p.synthesize_control_path()
+
+print('// Verilog...')
+p.print_verilog()
+
+run_test(mod_name)
