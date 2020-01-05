@@ -183,19 +183,19 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     print('Predecessors:', predecessors)
     print('Delays:', delays)
 
-    edges = []
-    for n in nodes:
-        name = n.data[0]
-        if name in iis:
-            edges.append((name, name, iis[name]))
-        if name in delays:
-            if name in predecessors:
-                edges.append((predecessors[name].data[0], name, delays[name]))
-            else:
-                assert(name == "root")
-                edges.append(("rst", name, delays[name]))
+    # edges = []
+    # for n in nodes:
+        # name = n.data[0]
+        # if name in iis:
+            # edges.append((name, name, iis[name]))
+        # if name in delays:
+            # if name in predecessors:
+                # edges.append((predecessors[name].data[0], name, delays[name]))
+            # else:
+                # assert(name == "root")
+                # edges.append(("rst", name, delays[name]))
 
-    print('Edges: ', edges)
+    # print('Edges: ', edges)
 
     pts = [inpt("clk"), inpt('rst'), inpt("en")]
     body = ""
