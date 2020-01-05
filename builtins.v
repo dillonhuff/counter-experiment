@@ -1,3 +1,27 @@
+module shift_register #(
+    parameter L = 1, // Number of stages (1 = this is a simple FF)
+    parameter W = 1// Width of Serial_in / Serial_out
+) (
+    input clk, rst, en,
+    input [W-1:0] Serial_in,
+    output [W-1:0] Serial_out
+);
+    reg [L*W-1:0] shreg;
+
+    always @(posedge clk) begin
+      if (rst) begin
+        shreg <= 0;
+      end else if (en) begin
+        //shreg <= {shreg, Serial_in};
+        //shreg <= {shreg[L*W - 1: 0], Serial_in};
+        // TODO: Generalize for many dims
+        shreg <= Serial_in;
+      end
+    end
+
+    assign Serial_out = shreg[L*W-1:(L-1)*W];
+endmodule
+
 // Note that when clear is high the counter is cleared on the next cycle
 module counter(input clk, input rst, input clear, input en, output [31:0] out);
 
