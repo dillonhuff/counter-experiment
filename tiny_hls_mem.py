@@ -582,7 +582,7 @@ class HWProgram:
         out.close()
 
 def pt_verilog(pt):
-    return ("output" if pt[1] else "input") + " " + pt[0]
+    return ("output" if pt[1] else "input") + " [{0} - 1 : 0] ".format(pt[2]) + pt[0]
 
 def reverse_pt(pt):
     return (pt[0], not pt[1], pt[2])
