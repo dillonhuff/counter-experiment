@@ -1,3 +1,53 @@
+// How to restart always trips me up
+// - Assume that restart must come in after we are done?
+module count_every_ii_clks(input clk, input rst, input start, output out);
+
+  parameter N = 2;
+  parameter II = 1;
+
+  // Start with the simplest thing: Assume N == 1, II == 1
+  //
+  // Impl: 
+
+  reg last_start;
+
+
+  //reg [31:0] current_cnt;
+  //reg [31:0] delay;
+  //reg started_in_prior_cycle;
+  //reg done;
+
+  //wire active;
+
+  //assign active = start | started_in_prior_cycle;
+
+  always @(posedge clk) begin
+    if (rst) begin
+      last_start <= 0;
+    end else begin
+      last_start <= start;
+    end
+    //if (rst) begin
+      //started_in_prior_cycle <= 0;
+      //current_cnt <= 0;
+      //delay <= II;
+      //done <= 0;
+    //end else begin
+      //if (start) begin
+        //started_in_prior_cycle <= 1;
+        //current_cnt <= 0;
+      //end
+
+      //if (active) begin:
+        //delay <= delay == 0 ? II : delay - 1;
+      //end
+    //end
+  end
+
+  assign out = start | last_start;
+  
+endmodule
+
 // Counts number of clock edges since arrival of signal, assuming the clock is
 // after the signal
 module clks_since_signal(input clk, input rst, input signal, output [31:0] num, output no_signal_yet);

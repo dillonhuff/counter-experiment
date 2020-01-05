@@ -277,14 +277,19 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
                 # this event was happening II cycles ago, and !x_at_trip_count
                 # II cycles ago
                 body += '\twire {0}_ii_done;\n'.format(name)
-                modstr = instantiate_mod('n_clks_since_signal #({0})'.format(ii),
+
+                modstr = instantiate_mod('count_every_ii_clks',
                         '{0}_ii_cycles'.format(name),
-                        {"clk" : "clk", "rst" : "rst", "signal" : "{0}_happening".format(name),
-                            "out" : "{0}_ii_done".format(name)})
+                        {"clk" : "clk", "rst" : "rst", "start" : pred_happened,
+                            "out" : "{0}_happening".format(name)})
+                # modstr = instantiate_mod('n_clks_since_signal #({0})'.format(ii),
+                        # '{0}_ii_cycles'.format(name),
+                        # {"clk" : "clk", "rst" : "rst", "signal" : "{0}_happening".format(name),
+                            # "out" : "{0}_ii_done".format(name)})
 
                 body += '\t' + modstr + '\n'
                 # body += '\tassign {0}_happening = {1} | (!{0}_done & (({2} & {0}_iter <= {3})));\n'.format(name, pred_happened, '{0}_ii_done'.format(name), n.data[1].e)
-                body += '\tassign {0}_happening = {1} | ((({2} & {0}_iter <= {3})));\n'.format(name, pred_happened, '{0}_ii_done'.format(name), n.data[1].e)
+                # body += '\tassign {0}_happening = {1} | ((({2} & {0}_iter <= {3})));\n'.format(name, pred_happened, '{0}_ii_done'.format(name), n.data[1].e)
             else:
                 body += '\tassign {0}_happening = {1} | (!{0}_done & {4} & ((({2} % {3} == 0) & {0}_started)));\n'.format(name, pred_happened, elapsed, ii, ii_unit)
 
