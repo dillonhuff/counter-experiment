@@ -258,10 +258,8 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         # body += '\tassign {0}_done_this_cycle = {0}_done | ({1} & {0}_at_trip_count & {0}_happening);\n'.format(n.data[0], sep_list('(', ')', ' & ', children_done_strings))
         name = n.data[0]
         if name == "root":
-            body += '\twire seeing_fst_en;\n'
-            modstr = instantiate_mod('signal_seen_first', 'seen_en_fst', {"clk" : "clk", "rst" : "rst", "signal" : "en", "seen" : "seeing_fst_en"})
+            modstr = instantiate_mod('signal_seen_first', 'seen_en_fst', {"clk" : "clk", "rst" : "rst", "signal" : "en", "seen" : "{0}_happening".format(name)})
             body += tab(1) + modstr + '\n'
-            body += '\tassign {0}_happening = seeing_fst_en;\n'.format(name)
         else:
             pred = predecessors[name]
             pred_name = pred.data[0]
