@@ -243,9 +243,9 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             # if delay_unit != delays[name].unit:
                 # body += '\tlogic [31:0] {1}s_elapsed_since_{0}_start;\n'.format(name, delay_unit)
                 # body += '\tlogic [31:0] {1}s_elapsed_between_{0}_start_and_last_clock_edge;\n'.format(name, delay_unit)
-        body += '\n'
+        # body += '\n'
     
-    for n in nodes:
+    # for n in nodes:
         # body += '\tassign {0}_at_trip_count = {0}_iter == {1};\n'.format(n.data[0], n.data[1].e)
         # body += '\tassign {0}_started = {0}_starting_this_cycle | {0}_started_in_past_cycle;\n'.format(n.data[0])
 
@@ -274,7 +274,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             trip_count = n.data[1].e - n.data[1].s + 1;
             
             if ii_unit == "clk":
-                body += '\twire {0}_ii_done;\n'.format(name)
+                # body += '\twire {0}_ii_done;\n'.format(name)
 
                 modstr = instantiate_mod('count_every_ii_clks #(.N({0}), .II({1}))'.format(trip_count, ii),
                         '{0}_ii_cycles'.format(name),
@@ -283,7 +283,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
 
                 body += '\t' + modstr + '\n'
             else:
-                body += '\twire {0}_ii_done;\n'.format(name)
+                # body += '\twire {0}_ii_done;\n'.format(name)
 
                 modstr = instantiate_mod('count_every_ii_signals #(.N({0}), .II({1}))'.format(trip_count, ii),
                         '{0}_ii_cycles'.format(name),
