@@ -1,9 +1,15 @@
+// Counts number of clock edges since arrival of signal, assuming the clock is
+// after the signal
 module clks_since_signal(input clk, input rst, input signal, output [31:0] num, output no_signal_yet);
 
   reg [31:0] clks_elapsed_since_last_signal;
   reg signal_seen;
-  assign num = signal ? 0 : clks_elapsed_since_last_signal;
-  assign no_signal_yet = signal ? 0 : signal_seen;
+  
+  assign num = clks_elapsed_since_last_signal;
+  assign no_signal_yet = !signal_seen;
+  
+  //assign num = signal ? 0 : clks_elapsed_since_last_signal;
+  //assign no_signal_yet = signal ? 0 : signal_seen;
 
   always @(posedge clk) begin
     if (rst) begin

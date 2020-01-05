@@ -265,16 +265,28 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         else:
             pred = predecessors[name]
             pred_name = pred.data[0]
+            pred_happened = '{0}_happening'.format(pred_name)
+
             iiv = iis[name]
             ii = iiv.magnitude
             ii_unit = iiv.unit
             elapsed = '{0}s_elapsed_between_{1}_start_and_last_clock_edge'.format(ii_unit, name)
             body += '\tassign {0}_starting_this_cycle = ({1}_happening);\n'.format(name, pred_name)
-            # body += '\tassign {0}_happening = !{0}_done & ({1}_happening | (({2} % {3} == 0) & {0}_started));\n'.format(name, pred_name, elapsed, ii)
+            
             if ii_unit == "clk":
-                body += '\tassign {0}_happening = {1}_happening | (!{0}_done & ((({2} % {3} == 0) & {0}_started)));\n'.format(name, pred_name, elapsed, ii)
+                # this event was happening II cycles ago, and !x_at_trip_count
+                # II cycles ago
+                body += '\twire {0}_ii_done;\n'.format(name)
+                modstr = instantiate_mod('n_clks_since_signal #({0})'.format(ii),
+                        '{0}_ii_cycles'.format(name),
+                        {"clk" : "clk", "rst" : "rst", "signal" : "{0}_happening".format(name),
+                            "out" : "{0}_ii_done".format(name)})
+
+                body += '\t' + modstr + '\n'
+                # body += '\tassign {0}_happening = {1} | (!{0}_done & (({2} & {0}_iter <= {3})));\n'.format(name, pred_happened, '{0}_ii_done'.format(name), n.data[1].e)
+                body += '\tassign {0}_happening = {1} | ((({2} & {0}_iter <= {3})));\n'.format(name, pred_happened, '{0}_ii_done'.format(name), n.data[1].e)
             else:
-                body += '\tassign {0}_happening = {1}_happening | (!{0}_done & {4} & ((({2} % {3} == 0) & {0}_started)));\n'.format(name, pred_name, elapsed, ii, ii_unit)
+                body += '\tassign {0}_happening = {1} | (!{0}_done & {4} & ((({2} % {3} == 0) & {0}_started)));\n'.format(name, pred_happened, elapsed, ii, ii_unit)
 
                 # body += '\talways @(*) begin\n'
                 # body += '\t\t$display("### Combinational change... {0}");\n'.format(name)
@@ -334,8 +346,8 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         # body += '\t\t\t$display("{0}_happening = %d", {0}_happening);\n'.format(n.data[0])
         # body += '\t\t\t$display("{0}_done      = %d", {0}_done);\n'.format(n.data[0])
 
-        body += assert_str(3, '{0}_iter <= {1}'.format(n.data[0], n.data[1].e))
-        body += assert_str(3, '!{0}_done_this_cycle | {0}_at_trip_count'.format(n.data[0]))
+        # body += assert_str(3, '{0}_iter <= {1}'.format(n.data[0], n.data[1].e))
+        # body += assert_str(3, '!{0}_done_this_cycle | {0}_at_trip_count'.format(n.data[0]))
         body += '\t\t\tif ({0}_starting_this_cycle) begin\n'.format(n.data[0])
         body += '\t\t\t\t{0}_started_in_past_cycle <= 1;\n'.format(n.data[0])
         body += '\t\t\tend\n'
@@ -344,11 +356,12 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         body += '\t\t\t\t{0}_done <= 1;\n'.format(n.data[0])
         body += '\t\t\tend\n'
         body += '\n'
-        body += '\t\t\tif ({0}_happening & !{0}_at_trip_count) begin\n'.format(n.data[0])
+        # body += '\t\t\tif ({0}_happening & !{0}_at_trip_count) begin\n'.format(n.data[0])
+        body += '\t\t\tif ({0}_happening) begin\n'.format(n.data[0])
         body += '\t\t\t\t{0}_iter <= {0}_iter + 1;\n'.format(n.data[0])
         body += '\t\t\tend else if ({0}_starting_this_cycle) begin\n'.format(n.data[0])
         # When we re-start we must be at the trip count of the old loop
-        body += assert_str(4, '{0}_at_trip_count'.format(n.data[0]))
+        # body += assert_str(4, '{0}_at_trip_count'.format(n.data[0]))
         body += '\t\t\t\t{0}_iter <= 0;\n'.format(n.data[0])
         body += '\t\t\t\t{0}_done <= 0;\n'.format(n.data[0])
         body += '\t\t\tend\n'
