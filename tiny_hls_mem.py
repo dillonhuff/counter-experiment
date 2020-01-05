@@ -159,6 +159,9 @@ def tab(i):
         str += '\t'
     return str
 
+def synch_display_blk(display_str):
+    return '\talways @(posedge clk) begin $display({0}); end\n'.format(display_str)
+
 def assert_str(ind, cond):
     return tab(ind) + 'if (!({0})) begin $display("Assertion FAILED: {0}"); $finish(1); end\n'.format(cond)
 
@@ -240,6 +243,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
                         '{0}_to_{1}_delay_sr'.format(pred_name, name),
                         {'clk' : 'clk', 'rst' : 'rst', 'en' : en_signal, 'Serial_in' : pred_happened, "Serial_out" : new_pred_happened})
                 pred_happened = new_pred_happened
+                body += synch_display_blk('"{0} = %d", {0}'.format(pred_happened))
                 body += '\t{0}\n'.format(modstr)
 
             iiv = iis[name]
@@ -603,7 +607,11 @@ def register_vectorize_test():
     data = Module("register_32 ", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d", 32), outpt("q", 32)], "")
     p.add_inst("data", data)
 
-    p.add_loop("x", 0, 9)
+    in_pixels = 10
+    outer_loops = (in_pixels // 2) - 1
+    num_out_vaids = outer_loops
+
+    p.add_loop("x", 0, outer_loops)
     p.set_ii("x", quant(2, "en"))
 
     p.add_sub_loop("x", "write_to_reg", 0, 0)
