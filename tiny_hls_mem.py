@@ -658,15 +658,37 @@ p = HWProgram(mod_name);
 world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), inpt("x_valid"), outpt("in")], "")
 p.add_inst("world", world)
 
-# How do we create an upsample?
-#  1. Need to have an outer loop which reads every input, and an inner loop which writes the input twice
-#  2. So maybe we need to have the inner loop with a fractional II?
-#  3. If we have a fractional II what does that mean for the value of the clock?
 p.add_loop("x", 0, 9)
 p.set_ii("x", quant(1, "en"))
 
 p.add_sub_loop("x", "up_sample", 0, 1)
 p.set_ii("up_sample", quant(1, "clk"))
+
+read_in = p.read("world", "in", "x")
+
+out_write = p.write("world", {"res" : read_in}, "valid", "up_sample")
+out_write = p.write("world", {}, "x_valid", "x")
+
+p.synthesize_control_path()
+
+print('// Verilog...')
+p.print_verilog()
+
+run_test(mod_name)
+
+# Upsample by 3
+
+mod_name = "two_II_upsample"
+
+p = HWProgram(mod_name);
+world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), inpt("x_valid"), outpt("in")], "")
+p.add_inst("world", world)
+
+p.add_loop("x", 0, 9)
+p.set_ii("x", quant(1, "en"))
+
+p.add_sub_loop("x", "up_sample", 0, 1)
+p.set_ii("up_sample", quant(2, "clk"))
 
 read_in = p.read("world", "in", "x")
 

@@ -23,9 +23,6 @@ endmodule
 
 // Assumed signal order:
 // en < clear < rst
-// So if rst is high:
-//  - set last_state_to min
-//
 module m_counter(input clk, input rst, input clear, input en, output [31:0] out);
 
   parameter MIN = 0;
@@ -76,22 +73,12 @@ module count_every_ii_clks(input clk, input rst, input start, output out);
   m_counter #(.MIN(0), .MAX(N)) cnt_later(.clk(clk), .rst(rst), .clear(start), .en(1'b1), .out(cnt_out));
   wire active = start | (started_in_past_cycle & cnt_out < N);
 
-
-  //counter_continue #(.MIN(1), .MAX(N)) cnt_later(.clk(clk), .rst(rst), .clear(start), .out(cnt_out));
-
-  //wire active = start | (started_in_past_cycle & cnt_out < N);
-
-  //reg last_start;
-
   always @(posedge clk) begin
     $display("cnt out = %d", cnt_out);
 
     if (rst) begin
-      //last_start <= 0;
       started_in_past_cycle <= 0;
     end else begin
-      //last_start <= start;
-
       if (start) begin
         started_in_past_cycle <= 1;
       end
