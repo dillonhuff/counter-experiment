@@ -6,6 +6,64 @@
 
 using namespace std;
 
+void test_valid_three() {
+
+  Vpassthrough p;
+  p.rst = 0;
+  p.clk = 0;
+  p.en = 0;
+
+  p.eval();
+
+  p.rst = 1;
+  
+  p.clk = 0;
+  p.eval();
+
+  p.clk = 1;
+  p.eval();
+
+  // Should be reset
+  //
+  p.clk = 0;
+  p.eval();
+
+  assert(p.valid == 0);
+
+  p.rst = 0;
+  p.eval();
+
+  cout << "--- Starting loop" << endl;
+  int num_valids = 0;
+  int num_x_valids = 0;
+  for (int i = 0; i < 100; i++) {
+    p.en = 1;
+    p.eval();
+
+    p.clk = 0;
+    p.eval();
+
+
+    if (p.valid == 1) {
+      num_valids++;
+      //cout << "\tup valid at " << i << ", " << j << endl;
+    } else {
+      //cout << "\tup NOT valid at " << i << ", " << j << endl;
+    }
+
+    p.clk = 1;
+    p.eval();
+  }
+
+
+  cout << "num_x_valids = " << num_x_valids << endl;
+  cout << "num_valids = " << num_valids << endl;
+
+  assert(num_valids == 10);
+
+  cout << "Valid three test passed" << endl;
+}
+
 int main() {
 
   Vpassthrough p;
@@ -58,5 +116,7 @@ int main() {
 
   assert(num_valids == 10);
 
-  cout << "Test passed" << endl;
+  cout << "Basic Test passed" << endl;
+
+  test_valid_three();
 }
