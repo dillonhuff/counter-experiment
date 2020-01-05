@@ -33,6 +33,7 @@ module m_counter(input clk, input rst, input clear, input en, output [31:0] out)
 
   always @(*) begin
     if (clear) begin
+      $display("clearing");
       out_data = MIN;
     end else if (en && last_clk_state < MAX) begin
       out_data = last_clk_state + 1;
@@ -43,6 +44,7 @@ module m_counter(input clk, input rst, input clear, input en, output [31:0] out)
 
   always @(posedge clk) begin
     if (rst) begin
+      $display("reseting");
       last_clk_state <= MIN;
     end else begin
       last_clk_state <= out_data;
@@ -70,8 +72,8 @@ module count_every_ii_clks(input clk, input rst, input start, output out);
   wire [31:0] cnt_out;
   reg started_in_past_cycle;
   
-  m_counter #(.MIN(0), .MAX(N)) cnt_later(.clk(clk), .rst(rst), .clear(start), .en(1'b1), .out(cnt_out));
-  wire active = start | (started_in_past_cycle & cnt_out < N);
+  m_counter #(.MIN(0), .MAX(N*II)) cnt_later(.clk(clk), .rst(rst), .clear(start), .en(1'b1), .out(cnt_out));
+  wire active = start | (started_in_past_cycle & (cnt_out / II) < N & (cnt_out % II == 0));
 
   always @(posedge clk) begin
     $display("cnt out = %d", cnt_out);
