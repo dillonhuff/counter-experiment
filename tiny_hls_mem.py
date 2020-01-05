@@ -272,13 +272,14 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             ii_unit = iiv.unit
             elapsed = '{0}s_elapsed_between_{1}_start_and_last_clock_edge'.format(ii_unit, name)
             body += '\tassign {0}_starting_this_cycle = ({1}_happening);\n'.format(name, pred_name)
+            trip_count = n.data[1].e - n.data[1].s + 1;
             
             if ii_unit == "clk":
                 # this event was happening II cycles ago, and !x_at_trip_count
                 # II cycles ago
                 body += '\twire {0}_ii_done;\n'.format(name)
 
-                modstr = instantiate_mod('count_every_ii_clks',
+                modstr = instantiate_mod('count_every_ii_clks #(.N({0}), .II({1}))'.format(trip_count, ii),
                         '{0}_ii_cycles'.format(name),
                         {"clk" : "clk", "rst" : "rst", "start" : pred_happened,
                             "out" : "{0}_happening".format(name)})
