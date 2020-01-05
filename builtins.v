@@ -1,3 +1,35 @@
+// Note that when clear is high the counter is cleared on the next cycle
+module counter(input clk, input rst, input clear, input en, output [31:0] out);
+
+  parameter MIN = 0;
+  parameter MAX = 1;
+
+  reg [31:0] out_data;
+
+  always @(posedge clk) begin
+    if (rst) begin
+      out_data <= MIN;
+    end else if (clear) begin
+      out_data <= MIN;
+    end else if (en && out_data < MAX) begin
+      out_data <= out_data + 1;
+    end
+
+  end
+
+  assign out = out_data;
+
+endmodule
+
+module counter_continue(input clk, input rst, input clear, output [31:0] out);
+
+  parameter MIN = 0;
+  parameter MAX = 1;
+
+  counter #(.MIN(MIN), .MAX(MAX)) c(.clk(clk), .rst(rst), .clear(clear), .en(1'b1), .out(out));
+
+endmodule
+
 // How to restart always trips me up
 // - Assume that restart must come in after we are done?
 module count_every_ii_clks(input clk, input rst, input start, output out);
@@ -5,46 +37,31 @@ module count_every_ii_clks(input clk, input rst, input start, output out);
   parameter N = 2;
   parameter II = 1;
 
-  // Start with the simplest thing: Assume N == 1, II == 1
-  //
-  // Impl: 
+  reg started_in_past_cycle;
+  wire [31:0] cnt_out;
+  counter_continue #(.MIN(1), .MAX(N)) cnt_later(.clk(clk), .rst(rst), .clear(start), .out(cnt_out));
+
+  wire active = start | (started_in_past_cycle & cnt_out < N);
 
   reg last_start;
 
-
-  //reg [31:0] current_cnt;
-  //reg [31:0] delay;
-  //reg started_in_prior_cycle;
-  //reg done;
-
-  //wire active;
-
-  //assign active = start | started_in_prior_cycle;
-
   always @(posedge clk) begin
+    $display("cnt out = %d", cnt_out);
+
     if (rst) begin
       last_start <= 0;
+      started_in_past_cycle <= 0;
     end else begin
       last_start <= start;
-    end
-    //if (rst) begin
-      //started_in_prior_cycle <= 0;
-      //current_cnt <= 0;
-      //delay <= II;
-      //done <= 0;
-    //end else begin
-      //if (start) begin
-        //started_in_prior_cycle <= 1;
-        //current_cnt <= 0;
-      //end
 
-      //if (active) begin:
-        //delay <= delay == 0 ? II : delay - 1;
-      //end
-    //end
+      if (start) begin
+        started_in_past_cycle <= 1;
+      end
+    end
   end
 
-  assign out = start | last_start;
+  //assign out = start | last_start;
+  assign out = active;
   
 endmodule
 
