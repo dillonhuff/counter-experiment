@@ -520,7 +520,8 @@ class HWProgram:
             if inst != "world":
                 connect_strs = []
                 for pt in self.instances[inst].ports:
-                    istr += '\tlogic {0};\n'.format(pt_name(inst, pt))
+                    pt_width = pt[2]
+                    istr += '\tlogic [{1} - 1 : 0] {0};\n'.format(pt_name(inst, pt), pt_width)
                     connect_strs.append('.{0}({1})'.format(pt[0], pt_name(inst, pt)))
                 mod = self.instances[inst]
                 istr += '\t' + mod.name + ' ' + inst + sep_list('(', ')', ', ', connect_strs) + ';\n'
@@ -707,18 +708,31 @@ def register_vectorize_test():
     mod_name = "register_vectorize"
 
     p = HWProgram(mod_name);
-    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), inpt("x_valid"), outpt("in")], "")
+    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res_pt", 32), inpt("res_reg", 32), inpt("x_valid"), outpt("in", 32)], "")
     p.add_inst("world", world)
 
+    data = Module("register_32 ", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d", 32), outpt("q", 32)], "")
+    p.add_inst("data", data)
+
     p.add_loop("x", 0, 9)
-    p.set_ii("x", quant(1, "en"))
+    p.set_ii("x", quant(2, "en"))
 
-    p.add_sub_loop("x", "up_sample", 0, 1)
-    p.set_ii("up_sample", quant(2, "clk"))
+    p.add_sub_loop("x", "write_to_reg", 0, 0)
+    p.set_delay("write_to_reg", quant(0, "en"))
+    p.set_ii("write_to_reg", quant(1, "en"))
 
-    read_in = p.read("world", "in", "x")
+    p.add_sub_loop("x", "write_to_out", 0, 0)
+    p.set_delay("write_to_out", quant(1, "en"))
+    p.set_ii("write_to_out", quant(1, "en"))
 
-    out_write = p.write("world", {"res" : read_in}, "valid", "up_sample")
+    read_for_reg = p.read("world", "in", "write_to_reg")
+
+    read_for_out = p.read("world", "in", "write_to_out")
+    read_for_reg_val = p.read("data", "d", "write_to_out")
+
+    out_write = p.write("world", {"res_reg" : read_for_reg_val}, "valid", "write_to_out")
+    out_write = p.write("world", {"res_pt" : read_for_out}, "", "write_to_out")
+
     out_write = p.write("world", {}, "x_valid", "x")
 
     p.synthesize_control_path()

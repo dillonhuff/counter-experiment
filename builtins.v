@@ -170,6 +170,23 @@ module condition_at_last_signal(input clk, input rst, input signal, input condit
   
 endmodule
 
+module register_32(input clk, input rst, input en, input [31:0] d, output [31:0] q);
+
+  reg [31:0] d_data;
+  always @(posedge clk) begin
+    if (rst) begin
+      d_data <= 0;
+    end else begin
+      if (en) begin
+        d_data <= d;
+      end
+    end
+  end
+
+  assign q = d_data;
+
+endmodule
+
 // Self transition is: II clks since last signal and
 // condition_at_last_signal(happening, !x_at_trip_count)
 module reg_1(input clk, input rst, input en, input d, output q);
