@@ -586,8 +586,8 @@ def pt_verilog(pt):
 def reverse_pt(pt):
     return (pt[0], not pt[1], pt[2])
 
-def outpt(name):
-    return (name, True, 1)
+def outpt(name, width=1):
+    return (name, True, width)
 
 def is_out_pt(pt):
     return pt[1]
@@ -598,8 +598,8 @@ def pt_name(inst, pt):
 def is_in_pt(pt):
     return not pt[1]
 
-def inpt(name):
-    return (name, False, 1)
+def inpt(name, width=1):
+    return (name, False, width)
 
 def run_test(mname):
     main_name = "{0}_tb.cpp".format(mname)
@@ -702,3 +702,31 @@ print('// Verilog...')
 p.print_verilog()
 
 run_test(mod_name)
+
+def register_vectorize_test():
+    mod_name = "register_vectorize"
+
+    p = HWProgram(mod_name);
+    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), inpt("x_valid"), outpt("in")], "")
+    p.add_inst("world", world)
+
+    p.add_loop("x", 0, 9)
+    p.set_ii("x", quant(1, "en"))
+
+    p.add_sub_loop("x", "up_sample", 0, 1)
+    p.set_ii("up_sample", quant(2, "clk"))
+
+    read_in = p.read("world", "in", "x")
+
+    out_write = p.write("world", {"res" : read_in}, "valid", "up_sample")
+    out_write = p.write("world", {}, "x_valid", "x")
+
+    p.synthesize_control_path()
+
+    print('// Verilog...')
+    p.print_verilog()
+
+    run_test(mod_name)
+    return
+
+register_vectorize_test()
