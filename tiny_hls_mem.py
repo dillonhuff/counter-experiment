@@ -162,6 +162,14 @@ def tab(i):
 def assert_str(ind, cond):
     return tab(ind) + 'if (!({0})) begin $display("Assertion FAILED: {0}"); $finish(1); end\n'.format(cond)
 
+
+def instantiate_mod(mod_name, inst_name, ports):
+    port_strings = []
+    for pt in ports:
+        port_strings.append('.' + pt + '(' + ports[pt] + ')')
+    port_binding = sep_list('(', ')', ', ', port_strings)
+    return '{0} {1}{2};'.format(mod_name, inst_name, port_binding)
+
 # Add assertions?
 def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     print('iis: ', iis)
@@ -249,15 +257,14 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             children_done_strings.append(c.data[0] + '_done_this_cycle')
         body += '\tassign {0}_done_this_cycle = {0}_done | ({1} & {0}_at_trip_count & {0}_happening);\n'.format(n.data[0], sep_list('(', ')', ' & ', children_done_strings))
         name = n.data[0]
-        # I need for root to be happening only the first time that its condition is true
         if name == "root":
-            body += '\tassign {0}_happening = !{0}_done & ens_since_rst == 1 & en == 1;\n'.format(name)
+            body += '\twire seeing_fst_en;\n'
+            modstr = instantiate_mod('signal_seen_first', 'seen_en_fst', {"clk" : "clk", "rst" : "rst", "signal" : "en", "seen" : "seeing_fst_en"})
+            body += tab(1) + modstr + '\n'
+            body += '\tassign {0}_happening = seeing_fst_en;\n'.format(name)
         else:
             pred = predecessors[name]
             pred_name = pred.data[0]
-            # Get II condition?
-            # Want to track: if the event being tracked happened in an earlier cycle, and if the time units elapsed since start
-            # is divisible by II and greater than 0?
             iiv = iis[name]
             ii = iiv.magnitude
             ii_unit = iiv.unit

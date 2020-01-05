@@ -22,6 +22,21 @@ module clks_since_signal(input clk, input rst, input signal, output [31:0] num, 
 
 endmodule
 
+module signal_seen_first(input clk, input rst, input signal, output seen);
+
+  reg seen_in_past_cycle;
+
+  assign seen = signal & !seen_in_past_cycle;
+
+  always @(posedge clk) begin
+    if (rst) begin
+      seen_in_past_cycle <= 0;
+    end else if (signal) begin
+      seen_in_past_cycle <= 1;
+    end
+  end
+endmodule
+
 module n_clks_since_signal(input clk, input rst, input signal, output out);
 
   parameter N = 1;
@@ -39,7 +54,7 @@ module condition_at_last_signal(input clk, input rst, input signal, input condit
 
   reg signal_seen;
   reg condition_value_at_last_signal;
-  assign no_signal_yet = signal ? 0 : signal_seen;
+  assign no_signal_yet = signal ? 0 : !signal_seen;
   assign out = signal ? condition : condition_value_at_last_signal;
 
   always @(posedge clk) begin
