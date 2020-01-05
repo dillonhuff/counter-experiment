@@ -91,6 +91,32 @@ module count_every_ii_clks(input clk, input rst, input start, output out);
   
 endmodule
 
+module count_every_ii_signals(input clk, input rst, input start, input signal, output out);
+
+  parameter N = 2;
+  parameter II = 1;
+
+  wire [31:0] cnt_out;
+  reg started_in_past_cycle;
+  
+  m_counter #(.MIN(0), .MAX(N*II)) cnt_later(.clk(clk), .rst(rst), .clear(start), .en(signal), .out(cnt_out));
+  wire active = start | (signal & (started_in_past_cycle & (cnt_out / II) < N & (cnt_out % II == 0)));
+
+  always @(posedge clk) begin
+    $display("cnt out = %d", cnt_out);
+
+    if (rst) begin
+      started_in_past_cycle <= 0;
+    end else begin
+      if (start) begin
+        started_in_past_cycle <= 1;
+      end
+    end
+  end
+
+  assign out = active;
+  
+endmodule
 // Counts number of clock edges since arrival of signal, assuming the clock is
 // after the signal
 module clks_since_signal(input clk, input rst, input signal, output [31:0] num, output no_signal_yet);
