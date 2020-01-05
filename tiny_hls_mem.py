@@ -677,7 +677,7 @@ p.print_verilog()
 
 run_test(mod_name)
 
-# Upsample by 3
+# Upsample with a delay between the upsampled outputs 
 
 mod_name = "two_II_upsample"
 
