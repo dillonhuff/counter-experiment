@@ -21,6 +21,41 @@ module counter(input clk, input rst, input clear, input en, output [31:0] out);
 
 endmodule
 
+// Assumed signal order:
+// en < clear < rst
+// So if rst is high:
+//  - set last_state_to min
+//
+module m_counter(input clk, input rst, input clear, input en, output [31:0] out);
+
+  parameter MIN = 0;
+  parameter MAX = 1;
+
+  reg [31:0] out_data;
+  reg [31:0] last_clk_state;
+
+  always @(*) begin
+    if (clear) begin
+      out_data = MIN;
+    end else if (en && last_clk_state < MAX) begin
+      out_data = last_clk_state + 1;
+    end else begin
+      out_data = last_clk_state;
+    end
+  end
+
+  always @(posedge clk) begin
+    if (rst) begin
+      last_clk_state <= MIN;
+    end else begin
+      last_clk_state <= out_data;
+    end
+  end
+
+  assign out = out_data;
+
+endmodule
+
 module counter_continue(input clk, input rst, input clear, output [31:0] out);
 
   parameter MIN = 0;
@@ -30,29 +65,32 @@ module counter_continue(input clk, input rst, input clear, output [31:0] out);
 
 endmodule
 
-// How to restart always trips me up
-// - Assume that restart must come in after we are done?
 module count_every_ii_clks(input clk, input rst, input start, output out);
 
   parameter N = 2;
   parameter II = 1;
 
-  reg started_in_past_cycle;
   wire [31:0] cnt_out;
-  counter_continue #(.MIN(1), .MAX(N)) cnt_later(.clk(clk), .rst(rst), .clear(start), .out(cnt_out));
-
+  reg started_in_past_cycle;
+  
+  m_counter #(.MIN(0), .MAX(N)) cnt_later(.clk(clk), .rst(rst), .clear(start), .en(1'b1), .out(cnt_out));
   wire active = start | (started_in_past_cycle & cnt_out < N);
 
-  reg last_start;
+
+  //counter_continue #(.MIN(1), .MAX(N)) cnt_later(.clk(clk), .rst(rst), .clear(start), .out(cnt_out));
+
+  //wire active = start | (started_in_past_cycle & cnt_out < N);
+
+  //reg last_start;
 
   always @(posedge clk) begin
     $display("cnt out = %d", cnt_out);
 
     if (rst) begin
-      last_start <= 0;
+      //last_start <= 0;
       started_in_past_cycle <= 0;
     end else begin
-      last_start <= start;
+      //last_start <= start;
 
       if (start) begin
         started_in_past_cycle <= 1;
@@ -60,7 +98,6 @@ module count_every_ii_clks(input clk, input rst, input start, output out);
     end
   end
 
-  //assign out = start | last_start;
   assign out = active;
   
 endmodule

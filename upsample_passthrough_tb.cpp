@@ -67,6 +67,16 @@ int main() {
       cout << "----------------- Finished evaluating clock edge (" << i << ", " << j << ")" << endl;
 
     }
+
+    for (int k = 0; k < 10; k++) {
+      p.en = 0;
+      p.clk = 0;
+      p.eval();
+
+      p.clk = 1;
+      p.eval();
+      p.en = 1;
+    }
   }
 
   cout << "num_x_valids = " << num_x_valids << endl;
