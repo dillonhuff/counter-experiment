@@ -190,13 +190,12 @@ def build_control_path(event_tree, var_bounds, iis, delays):
     for n in nodes:
         data = n.data
         name = data[0]
+        assert(name in delays)
+        
         pts.append(outpt(data[0]))
         body += '\tlogic {0}_happening;\n'.format(name)
         body += '\tassign {0} = {0}_happening;\n'.format(n.data[0])
 
-        name = n.data[0]
-
-        assert(name in delays)
         delay_v = delays[name]
         delay_unit = delay_v.unit
         delay = delay_v.magnitude
