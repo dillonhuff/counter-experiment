@@ -284,6 +284,24 @@ module condition_at_last_signal(input clk, input rst, input signal, input condit
   
 endmodule
 
+module register_s(input clk, input rst, input en, input [WIDTH - 1 :0] d, output [WIDTH - 1:0] q);
+
+  parameter WIDTH;
+
+  reg [WIDTH - 1 :0] d_data;
+  always @(posedge clk) begin
+    if (rst) begin
+      d_data <= 0;
+    end else begin
+      if (en) begin
+        d_data <= d;
+      end
+    end
+  end
+
+  assign q = d_data;
+
+endmodule
 module register_32(input clk, input rst, input en, input [31:0] d, output [31:0] q);
 
   reg [31:0] d_data;

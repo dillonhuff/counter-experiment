@@ -443,13 +443,19 @@ class HWProgram:
         istr += '\t// Writes\n'
         for w in ports_to_writes:
             # TODO: or the predicates for writes
+            print('w: ', ports_to_writes)
             writes = ports_to_writes[w]
             if len(writes) == 1:
                 trigger = writes[0][0]
                 istr += '\tassign {0} = {1};\n'.format(pt_underscore_str(w[0], w[1]), pt_underscore_str(trigger.inst, trigger.port));
             else:
-                print('Error: More than one write to mem, add multiplexing')
-                assert(False)
+                istr += '\talways @(*) begin\n'
+                for wr in writes:
+                    trigger = wr[0]
+                    istr += tab(2) + 'if ({0}) begin\n'.format(pt_underscore_str('control_path', trigger.time))
+                    istr += tab(3) + '{0} = {1};\n'.format(pt_underscore_str(w[0], w[1]), pt_underscore_str(trigger.inst, trigger.port));
+                    istr += tab(2) + 'end\n'
+                istr += '\tend\n'
         istr += 'endmodule\n'
 
         out = open(self.name + '.v', 'w')
