@@ -487,6 +487,17 @@ def run_test(mname):
 
     run_cmd('./obj_dir/V' + mname)
 
+def write_reg(p, inst, value, time):
+    p.write(inst, {"d" : value}, "en", time)
+
+def read_reg(p, inst, time):
+    return p.read(inst, "q", time)
+
+def add_reg(prog, name, width):
+    reg = Module("register_s #(.WIDTH({0}))".format(width),
+            [inpt("clk"), inpt("rst"), inpt("en"), inpt("d", width), outpt("q", width)], "")
+    prog.add_inst(name, reg)
+
 mod_name = "passthrough"
 p = HWProgram(mod_name);
 world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("res"), outpt("in")], "")
@@ -626,25 +637,19 @@ def register_vectorize_test():
 
 register_vectorize_test()
 
-# Want: a single loop that reads in 10 values total, writes to an sram, then reads them out
-# addr.clear() at root
-# for x in [0, 4] by 2 en:
-#   v0 = read_in() at 0 en
-#   v1 = read_in() at 1 en
-#   data.write({v0, v1}, addr) at 1 en
-#   addr.inc() at 1 en
-
 def sram_loop_test():
 
     mod_name = "sram_loop"
 
     p = HWProgram(mod_name);
-    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 64), inpt("x_valid"), outpt("in", 64)], "")
+    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 64), inpt("x_valid"), outpt("in", 64), outpt("in_addr", 7)], "")
     p.add_inst("world", world)
 
     addr_width = 7
     ram = Module("single_port_sram #(.WIDTH(64), .DEPTH(128))", [inpt("clk"), inpt("rst"), inpt("ren"), inpt("wen"), inpt("addr", addr_width), inpt("d", 64), outpt("q", 64)], "")
     p.add_inst("mem", ram)
+
+    add_reg(p, "addr_reg", addr_width)
 
     p.add_sub_event("root", "write_ram")
 
@@ -653,6 +658,21 @@ def sram_loop_test():
 
     p.add_sub_event("read_ram", "write_output")
     p.set_delay("write_output", quant(1, "clk"))
+
+    # Read in address and data and write it to the ram 
+    read_for_reg = p.read("world", "in", "write_ram")
+    read_addr = p.read("world", "in_addr", "write_ram")
+    p.write("mem", {"addr" : read_addr, "d" : read_for_reg}, "wen", "write_ram")
+    write_reg(p, "addr_reg", read_addr, "write_ram")
+
+    # Start to read the written value from the RAM
+    # Note: the address must be saved from the initial value?
+    old_addr = read_reg(p, "addr_reg", "read_ram")
+    p.write("mem", {"addr" : old_addr}, "ren", "read_ram")
+
+    # Finish by writing the data from the ram to the module output
+    mem_output = p.read("mem", "q", "write_output")
+    p.write("world", {"out" : mem_output}, "valid", "write_output")
 
     p.synthesize_control_path()
 
