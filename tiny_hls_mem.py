@@ -650,3 +650,63 @@ def register_vectorize_test():
     return
 
 register_vectorize_test()
+
+# Want: a single loop that reads in 10 values total, writes to an sram, then reads them out
+# addr.clear() at root
+# for x in [0, 4] by 2 en:
+#   v0 = read_in() at 0 en
+#   v1 = read_in() at 1 en
+#   data.write({v0, v1}, addr) at 1 en
+#   addr.inc() at 1 en
+
+def sram_loop_test():
+
+    mod_name = "sram_loop"
+
+    p = HWProgram(mod_name);
+    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 64), inpt("x_valid"), outpt("in", 32)], "")
+    p.add_inst("world", world)
+
+    data = Module("register_32 ", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d", 32), outpt("q", 32)], "")
+    p.add_inst("data", data)
+
+    addr_width = 7
+    ram = Module("single_port_sram #(.WIDTH(64), .DEPTH(128))", [inpt("clk"), inpt("rst"), inpt("ren"), inpt("wen"), inpt("addr", addr_width), inpt("d", 64), outpt("q", 64)], "")
+    p.add_inst("mem", data)
+
+    # in_pixels = 10
+    # outer_loops = (in_pixels // 2) - 1
+    # num_out_valids = outer_loops
+
+    # p.add_loop("x", 0, outer_loops)
+    # p.set_ii("x", quant(2, "en"))
+
+    # p.add_sub_loop("x", "write_to_reg", 0, 0)
+    # p.set_delay("write_to_reg", quant(0, "en"))
+    # p.set_ii("write_to_reg", quant(1, "en"))
+
+    # p.add_sub_loop("x", "write_to_out", 0, 0)
+    # p.set_delay("write_to_out", quant(1, "en"))
+    # p.set_ii("write_to_out", quant(1, "en"))
+
+    # read_for_reg = p.read("world", "in", "write_to_reg")
+
+    # read_for_out = p.read("world", "in", "write_to_out")
+    # read_for_reg_val = p.read("data", "q", "write_to_out")
+
+    # out_write = p.write("world", {"res_reg" : read_for_reg_val}, "valid", "write_to_out")
+    # out_write = p.write("world", {"res_pt" : read_for_out}, "", "write_to_out")
+
+    # out_write = p.write("world", {}, "x_valid", "x")
+    # # Set register value
+    # p.write("data", {"d" : read_for_reg}, "en", "write_to_reg")
+
+    p.synthesize_control_path()
+
+    print('// Verilog...')
+    p.print_verilog()
+
+    run_test(mod_name)
+    return
+
+sram_loop_test()
