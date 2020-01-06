@@ -3,11 +3,62 @@ module single_port_sram(input clk,
   input [$clog2(DEPTH) - 1 : 0] addr,
   input ren,
   input wen,
-  output [WIDTH - 1 : 0] q,
+  output reg [WIDTH - 1 : 0] q,
   input [WIDTH - 1 : 0] d);
 
   parameter WIDTH = 32;
   parameter DEPTH = 32;
+
+  reg [WIDTH - 1 : 0] data [DEPTH -1 : 0];
+
+  reg [$clog2(DEPTH) - 1 : 0] addr_reg;
+  reg [WIDTH - 1 : 0] data_reg;
+  reg do_read;
+  reg do_write;
+
+  always @(posedge clk) begin
+    if (ren & wen) begin
+      $display("ERROR: Reading and writing at the same time!");
+      $finish(1);
+    end
+
+    if (rst) begin
+      do_read <= 0;
+      do_write <= 0;
+    end else begin
+
+      if (wen) begin
+        do_write <= 1;
+        data_reg <= d;
+        addr_reg <= addr;
+      end else begin
+        do_write <= 0;
+      end
+
+      if (ren) begin
+        do_read <= 1;
+        data_reg <= data[addr];
+      end else begin
+        do_read <= 0;
+      end
+
+    end
+  end
+
+  always @(*) begin
+    if (do_read) begin
+      q = data_reg;
+    end else begin
+      // Dummy value to make errors more obvious
+      q = 189;
+    end
+  end
+  
+  always @(*) begin
+    if (do_write) begin
+      data[addr_reg] = data_reg;
+    end 
+  end
 
 endmodule
 
