@@ -231,6 +231,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             modstr = instantiate_mod('signal_seen_first', 'seen_en_fst', {"clk" : "clk", "rst" : "rst", "signal" : "en", "seen" : "{0}_happening".format(name)})
             body += tab(1) + modstr + '\n'
         else:
+            assert(delay <= 1)
             pred = predecessors[name]
             pred_name = pred.data[0]
             pred_happened = '{0}_happening'.format(pred_name)
