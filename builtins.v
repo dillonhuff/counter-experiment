@@ -19,7 +19,7 @@ module shift_register #(
       end
     end
 
-    assign Serial_out = shreg[L*W-1:(L-1)*W];
+    assign Serial_out = en & shreg[L*W-1:(L-1)*W];
 endmodule
 
 // Note that when clear is high the counter is cleared on the next cycle
