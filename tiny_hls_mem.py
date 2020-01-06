@@ -173,7 +173,7 @@ def instantiate_mod(mod_name, inst_name, ports):
     port_binding = sep_list('(', ')', ', ', port_strings)
     return '{0} {1}{2};'.format(mod_name, inst_name, port_binding)
 
-def build_control_path(event_tree, event_map, var_bounds, iis, delays):
+def build_control_path(event_tree, var_bounds, iis, delays):
     print('iis: ', iis)
     predecessors = {}
     nodes = all_nodes(event_tree)
@@ -346,16 +346,7 @@ class HWProgram:
         return bounds
 
     def synthesize_control_path(self):
-        self.event_map = {}
-        self.name_map = {}
-        wr_num = 0
-        for wr in self.writes:
-            if wr.pred != "":
-                self.name_map[wr] = wr.time
-                self.event_map[wr.time] = wr.time
-                wr_num += 1
-        print('name map: ', self.name_map)
-        cp_mod = build_control_path(self.loop_root, self.event_map, self.loop_bounds(), self.iis, self.delays)
+        cp_mod = build_control_path(self.loop_root, self.loop_bounds(), self.iis, self.delays)
         self.add_inst("control_path", cp_mod)
         print(cp_mod)
 
@@ -435,7 +426,8 @@ class HWProgram:
             writes = pred_ports_to_writes[pred_pt_i]
             if len(writes) == 1:
                 pred_pt_name = pt_underscore_str(inst, pred_pt)
-                istr += '\tassign {0} = {1};\n'.format(pred_pt_name, pt_underscore_str('control_path', self.name_map[writes[0]]))
+                istr += '\tassign {0} = {1};\n'.format(pred_pt_name, pt_underscore_str('control_path', writes[0].time))
+                # self.name_map[writes[0]]))
             else:
                 print('Error: More than one write uses predicate: {0}'.format(pred_pt))
                 assert(False)
