@@ -21,6 +21,7 @@ void check_total_output() {
 
   int num_valids = 0;
   int num_x_valids = 0;
+  int in_pix = 0;
 
   for (int t = 0; t < 100; t++) {
     bool set_en_cycle = t % 5 == 0;
@@ -28,6 +29,8 @@ void check_total_output() {
     cout << "t = " << t << endl;
     if (set_en_cycle) {
       set_sig(p, en, 1);
+      set_sig(p, in, in_pix);
+      in_pix++;
     } else {
       set_sig(p, en, 0);
     }
@@ -42,6 +45,8 @@ void check_total_output() {
 
     if (p.valid) {
       cout << t << ":p valid" << endl;
+      cout << "\tres_pt : " << p.res_pt << endl;
+      cout << "\tres_reg: " << p.res_reg << endl;
       num_valids++;
     }
 

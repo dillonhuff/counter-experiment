@@ -305,6 +305,13 @@ class HWProgram:
         self.instances[name] = mod
 
     def read(self, inst, pt, time):
+        mod = self.instances[inst]
+        found_pt = False
+        for other_pt in mod.ports:
+            if other_pt[0] == pt:
+                found_pt = True
+                break
+        assert(found_pt)
         self.reads.append(HWRead(inst, pt, time))
         return self.reads[-1]
 
@@ -625,12 +632,14 @@ def register_vectorize_test():
     read_for_reg = p.read("world", "in", "write_to_reg")
 
     read_for_out = p.read("world", "in", "write_to_out")
-    read_for_reg_val = p.read("data", "d", "write_to_out")
+    read_for_reg_val = p.read("data", "q", "write_to_out")
 
     out_write = p.write("world", {"res_reg" : read_for_reg_val}, "valid", "write_to_out")
     out_write = p.write("world", {"res_pt" : read_for_out}, "", "write_to_out")
 
     out_write = p.write("world", {}, "x_valid", "x")
+    # Set register value
+    p.write("data", {"d" : read_for_reg}, "en", "write_to_reg")
 
     p.synthesize_control_path()
 
