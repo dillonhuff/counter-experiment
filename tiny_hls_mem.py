@@ -173,7 +173,6 @@ def instantiate_mod(mod_name, inst_name, ports):
     port_binding = sep_list('(', ')', ', ', port_strings)
     return '{0} {1}{2};'.format(mod_name, inst_name, port_binding)
 
-# Add assertions?
 def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     print('iis: ', iis)
     predecessors = {}
@@ -186,28 +185,8 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     print('Predecessors:', predecessors)
     print('Delays:', delays)
 
-    # edges = []
-    # for n in nodes:
-        # name = n.data[0]
-        # if name in iis:
-            # edges.append((name, name, iis[name]))
-        # if name in delays:
-            # if name in predecessors:
-                # edges.append((predecessors[name].data[0], name, delays[name]))
-            # else:
-                # assert(name == "root")
-                # edges.append(("rst", name, delays[name]))
-
-    # print('Edges: ', edges)
-
     pts = [inpt("clk"), inpt('rst'), inpt("en")]
     body = ""
-    units = []
-    for n in iis:
-        val = iis[n]
-        name = val.unit
-        if name != "clk" and not name in units:
-            units.append(name)
 
     body += '\n\t// Per-Event Control Logic\n'
     for n in nodes:
@@ -215,7 +194,6 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
         name = data[0]
         pts.append(outpt(data[0]))
         body += '\tlogic {0}_happening;\n'.format(name)
-
         body += '\tassign {0} = {0}_happening;\n'.format(n.data[0])
 
         name = n.data[0]
@@ -244,7 +222,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
                         '{0}_to_{1}_delay_sr'.format(pred_name, name),
                         {'clk' : 'clk', 'rst' : 'rst', 'en' : en_signal, 'Serial_in' : pred_happened, "Serial_out" : new_pred_happened})
                 pred_happened = new_pred_happened
-                body += synch_display_blk('"{0} = %d", {0}'.format(pred_happened))
+                # body += synch_display_blk('"{0} = %d", {0}'.format(pred_happened))
                 body += '\t{0}\n'.format(modstr)
 
             iiv = iis[name]
@@ -255,22 +233,29 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             if trip_count == 1:
                 body += '\tassign {0}_happening = {1};\n'.format(name, pred_happened)
             else:
-                if ii_unit == "clk":
+                ii_en_signal = ii_unit if ii_unit != "clk" else "1'b1"
+                modstr = instantiate_mod('count_every_ii_signals #(.N({0}), .II({1}))'.format(trip_count, ii),
+                        '{0}_ii_cycles'.format(name),
+                        {"clk" : "clk", "rst" : "rst", "start" : pred_happened, "signal" : ii_en_signal,
+                            "out" : "{0}_happening".format(name)})
 
-                    modstr = instantiate_mod('count_every_ii_clks #(.N({0}), .II({1}))'.format(trip_count, ii),
-                            '{0}_ii_cycles'.format(name),
-                            {"clk" : "clk", "rst" : "rst", "start" : pred_happened,
-                                "out" : "{0}_happening".format(name)})
+                body += '\t' + modstr + '\n'
+                # if ii_unit == "clk":
 
-                    body += '\t' + modstr + '\n'
-                else:
+                    # modstr = instantiate_mod('count_every_ii_clks #(.N({0}), .II({1}))'.format(trip_count, ii),
+                            # '{0}_ii_cycles'.format(name),
+                            # {"clk" : "clk", "rst" : "rst", "start" : pred_happened,
+                                # "out" : "{0}_happening".format(name)})
 
-                    modstr = instantiate_mod('count_every_ii_signals #(.N({0}), .II({1}))'.format(trip_count, ii),
-                            '{0}_ii_cycles'.format(name),
-                            {"clk" : "clk", "rst" : "rst", "start" : pred_happened, "signal" : ii_unit,
-                                "out" : "{0}_happening".format(name)})
+                    # body += '\t' + modstr + '\n'
+                # else:
 
-                    body += '\t' + modstr + '\n'
+                    # modstr = instantiate_mod('count_every_ii_signals #(.N({0}), .II({1}))'.format(trip_count, ii),
+                            # '{0}_ii_cycles'.format(name),
+                            # {"clk" : "clk", "rst" : "rst", "start" : pred_happened, "signal" : ii_unit,
+                                # "out" : "{0}_happening".format(name)})
+
+                    # body += '\t' + modstr + '\n'
 
         body += '\n'
 
@@ -389,17 +374,11 @@ class HWProgram:
         for wr in self.writes:
             if wr.pred != "":
                 self.name_map[wr] = wr.time
-                # 'write_' + str(wr_num) + '_en'
-                # self.event_map['write_' + str(wr_num) + '_en'] = wr.time
                 self.event_map[wr.time] = wr.time
                 wr_num += 1
         print('name map: ', self.name_map)
-        # print('All events that need an enable...')
-        # for m in event_map:
-            # print('\t', m, ':', event_map[m])
         cp_mod = build_control_path(self.loop_root, self.event_map, self.loop_bounds(), self.iis, self.delays)
         self.add_inst("control_path", cp_mod)
-        # print('Control path...')
         print(cp_mod)
 
         return
