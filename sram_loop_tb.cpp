@@ -49,6 +49,14 @@ void check_total_output() {
 
   assert(p.valid == 0);
 
+  // Check that no more outputs come out in
+  // garbage cycles
+  set_sig(p, en, 1);
+  for (int t = 0; t < 10; t++) {
+    assert(p.valid == 0);
+    pos(p, clk);
+  }
+
   cout << "total output test passed" << endl;
 }
 
