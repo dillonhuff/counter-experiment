@@ -1,3 +1,16 @@
+module single_port_sram(input clk,
+  input rst,
+  input [$clog2(DEPTH) - 1 : 0] addr,
+  input ren,
+  input wen,
+  output [WIDTH - 1 : 0] q,
+  input [WIDTH - 1 : 0] d);
+
+  parameter WIDTH = 32;
+  parameter DEPTH = 32;
+
+endmodule
+
 module shift_register #(
     parameter L = 1, // Number of stages (1 = this is a simple FF)
     parameter W = 1// Width of Serial_in / Serial_out

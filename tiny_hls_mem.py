@@ -672,7 +672,7 @@ def sram_loop_test():
 
     addr_width = 7
     ram = Module("single_port_sram #(.WIDTH(64), .DEPTH(128))", [inpt("clk"), inpt("rst"), inpt("ren"), inpt("wen"), inpt("addr", addr_width), inpt("d", 64), outpt("q", 64)], "")
-    p.add_inst("mem", data)
+    p.add_inst("mem", ram)
 
     # in_pixels = 10
     # outer_loops = (in_pixels // 2) - 1
