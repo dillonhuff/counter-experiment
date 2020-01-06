@@ -250,23 +250,26 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
             ii = iiv.magnitude
             ii_unit = iiv.unit
             trip_count = n.data[1].e - n.data[1].s + 1;
-            
-            if ii_unit == "clk":
-
-                modstr = instantiate_mod('count_every_ii_clks #(.N({0}), .II({1}))'.format(trip_count, ii),
-                        '{0}_ii_cycles'.format(name),
-                        {"clk" : "clk", "rst" : "rst", "start" : pred_happened,
-                            "out" : "{0}_happening".format(name)})
-
-                body += '\t' + modstr + '\n'
+           
+            if trip_count == 1:
+                body += '\tassign {0}_happening = {1};\n'.format(name, pred_happened)
             else:
+                if ii_unit == "clk":
 
-                modstr = instantiate_mod('count_every_ii_signals #(.N({0}), .II({1}))'.format(trip_count, ii),
-                        '{0}_ii_cycles'.format(name),
-                        {"clk" : "clk", "rst" : "rst", "start" : pred_happened, "signal" : ii_unit,
-                            "out" : "{0}_happening".format(name)})
+                    modstr = instantiate_mod('count_every_ii_clks #(.N({0}), .II({1}))'.format(trip_count, ii),
+                            '{0}_ii_cycles'.format(name),
+                            {"clk" : "clk", "rst" : "rst", "start" : pred_happened,
+                                "out" : "{0}_happening".format(name)})
 
-                body += '\t' + modstr + '\n'
+                    body += '\t' + modstr + '\n'
+                else:
+
+                    modstr = instantiate_mod('count_every_ii_signals #(.N({0}), .II({1}))'.format(trip_count, ii),
+                            '{0}_ii_cycles'.format(name),
+                            {"clk" : "clk", "rst" : "rst", "start" : pred_happened, "signal" : ii_unit,
+                                "out" : "{0}_happening".format(name)})
+
+                    body += '\t' + modstr + '\n'
 
         body += '\n'
 
@@ -692,33 +695,6 @@ def sram_loop_test():
 
     p.add_sub_event("read_ram", "write_output")
     p.set_delay("write_output", quant(1, "clk"))
-
-    # in_pixels = 10
-    # outer_loops = (in_pixels // 2) - 1
-    # num_out_valids = outer_loops
-
-    # p.add_loop("x", 0, outer_loops)
-    # p.set_ii("x", quant(2, "en"))
-
-    # p.add_sub_loop("x", "write_to_reg", 0, 0)
-    # p.set_delay("write_to_reg", quant(0, "en"))
-    # p.set_ii("write_to_reg", quant(1, "en"))
-
-    # p.add_sub_loop("x", "write_to_out", 0, 0)
-    # p.set_delay("write_to_out", quant(1, "en"))
-    # p.set_ii("write_to_out", quant(1, "en"))
-
-    # read_for_reg = p.read("world", "in", "write_to_reg")
-
-    # read_for_out = p.read("world", "in", "write_to_out")
-    # read_for_reg_val = p.read("data", "q", "write_to_out")
-
-    # out_write = p.write("world", {"res_reg" : read_for_reg_val}, "valid", "write_to_out")
-    # out_write = p.write("world", {"res_pt" : read_for_out}, "", "write_to_out")
-
-    # out_write = p.write("world", {}, "x_valid", "x")
-    # # Set register value
-    # p.write("data", {"d" : read_for_reg}, "en", "write_to_reg")
 
     p.synthesize_control_path()
 
