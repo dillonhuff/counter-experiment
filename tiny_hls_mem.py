@@ -186,9 +186,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
     print('Delays:', delays)
 
     pts = [inpt("clk"), inpt('rst'), inpt("en")]
-    body = ""
-
-    body += '\n\t// Per-Event Control Logic\n'
+    body = '\n\t// Per-Event Control Logic\n'
     for n in nodes:
         data = n.data
         name = data[0]
@@ -222,7 +220,6 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
                         '{0}_to_{1}_delay_sr'.format(pred_name, name),
                         {'clk' : 'clk', 'rst' : 'rst', 'en' : en_signal, 'Serial_in' : pred_happened, "Serial_out" : new_pred_happened})
                 pred_happened = new_pred_happened
-                # body += synch_display_blk('"{0} = %d", {0}'.format(pred_happened))
                 body += '\t{0}\n'.format(modstr)
 
             iiv = iis[name]
@@ -240,26 +237,7 @@ def build_control_path(event_tree, event_map, var_bounds, iis, delays):
                             "out" : "{0}_happening".format(name)})
 
                 body += '\t' + modstr + '\n'
-                # if ii_unit == "clk":
-
-                    # modstr = instantiate_mod('count_every_ii_clks #(.N({0}), .II({1}))'.format(trip_count, ii),
-                            # '{0}_ii_cycles'.format(name),
-                            # {"clk" : "clk", "rst" : "rst", "start" : pred_happened,
-                                # "out" : "{0}_happening".format(name)})
-
-                    # body += '\t' + modstr + '\n'
-                # else:
-
-                    # modstr = instantiate_mod('count_every_ii_signals #(.N({0}), .II({1}))'.format(trip_count, ii),
-                            # '{0}_ii_cycles'.format(name),
-                            # {"clk" : "clk", "rst" : "rst", "start" : pred_happened, "signal" : ii_unit,
-                                # "out" : "{0}_happening".format(name)})
-
-                    # body += '\t' + modstr + '\n'
-
         body += '\n'
-
-
     body += '\n'
 
     return Module('control_path', pts, body)
