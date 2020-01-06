@@ -322,6 +322,20 @@ class HWProgram:
     def add_instr(self, instr):
         self.instructions.append(instr)
 
+    def add_sub_event(self, predecessor, name):
+        m = 0
+        e = 0
+        nodes = all_nodes(self.loop_root)
+        found = False
+        for n in nodes:
+            if n.data[0] == predecessor:
+                n.children.append(Tree((name, Interval(m, e))))
+                self.set_delay(name, quant(0, 'en'))
+                found = True
+                break;
+        assert(found)
+        self.set_ii(name, quant(1, 'en'))
+
     def add_sub_loop(self, predecessor, name, m, e):
         nodes = all_nodes(self.loop_root)
         found = False
@@ -664,15 +678,20 @@ def sram_loop_test():
     mod_name = "sram_loop"
 
     p = HWProgram(mod_name);
-    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 64), inpt("x_valid"), outpt("in", 32)], "")
+    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 64), inpt("x_valid"), outpt("in", 64)], "")
     p.add_inst("world", world)
-
-    data = Module("register_32 ", [inpt("clk"), inpt("rst"), inpt("en"), inpt("d", 32), outpt("q", 32)], "")
-    p.add_inst("data", data)
 
     addr_width = 7
     ram = Module("single_port_sram #(.WIDTH(64), .DEPTH(128))", [inpt("clk"), inpt("rst"), inpt("ren"), inpt("wen"), inpt("addr", addr_width), inpt("d", 64), outpt("q", 64)], "")
     p.add_inst("mem", ram)
+
+    p.add_sub_event("root", "write_ram")
+
+    p.add_sub_event("write_ram", "read_ram")
+    p.set_delay("read_ram", quant(1, "clk"))
+
+    p.add_sub_event("read_ram", "write_output")
+    p.set_delay("write_output", quant(1, "clk"))
 
     # in_pixels = 10
     # outer_loops = (in_pixels // 2) - 1
