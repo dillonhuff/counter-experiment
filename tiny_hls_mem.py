@@ -632,7 +632,6 @@ def register_vectorize_test():
     run_test(mod_name)
     return
 
-register_vectorize_test()
 
 def sram_loop_test():
 
@@ -679,66 +678,5 @@ def sram_loop_test():
     run_test(mod_name)
     return
 
+register_vectorize_test()
 sram_loop_test()
-
-# Now:
-#  1. Try the aggregator, output, swizzle buffer example from Chris' email
-#  2. Components: aggregate (already tested)
-#  3. Wide SRAM (need this)
-#  4. Swizzle buffer (which can be read 3 at a time and written 2 at a time)
-#  5. Need to experiment with delays >= 1 as well
-
-# Maybe now: only use swizzle buffer, with writes aggregated?
-# --- Loops
-# for r in 0, 15: by 6 en, 0 en off root
-#  for c in 0, 2: by 2 en
-#   ag_reg = in_read() 0 en
-#   val = in_read() 1 en
-#   wide_sram.write({ag_reg, val}, r, c) 1 en
-#   {v0, v1} = wide_sram.read(r, c)
-#   swizzle.write({v0, v1})
-#   
-
-# Q: What is the original loop structure, how do I change it to
-#    a vectorized structure, and how do I emit hardware for it?
-
-# Start simpler: 4 x 1 vectorization of conv with "weird" bounds
-# Say: 3x3 conv over 7 x 15 image (7 rows, 15 cols)
-#      1x3 at a time (window rows loaded 1 per iteration)
-# Q: What challenges do I see?
-# A: One is that each 3 pixel output may not lie on an 4 byte
-#    boundary in the SRAM when they are written
-
-# Physical address mapping is: (c, r) -> (c, r % 3)
-
-# Conv 3x3
-# Conv producer:
-# for r in 0, 15:
-#  for c in 0, 5:
-#   img[c, r] = stream_read()
-
-# Conv consumer no unroll:
-# for r in 0, 13:
-#  for c in 0, 3
-#    pix tmp[9];
-#    tmp = vec_load_3_3(img, r, c)
-#    res = vec_fma_3_3(tmp);
-#    stream_write(res)
-
-# Conv producer (Chris)
-# for r in 0, 15:
-#  for c in 0, 2:
-#   img[c, r] = vec_store_1_2(r, 2*c)
-
-# Conv consumer (Chris)
-# for r in 0, 13:
-#  for c in 0, 3
-#    pix tmp[3];
-#    res = 0
-#    for ri in 0, 2:
-#     tmp = vec_load_1_3(img, r, c)
-#     res += vec_fma_3(tmp);
-#    stream_write(res)
-
-
-
