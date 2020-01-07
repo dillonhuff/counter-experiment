@@ -425,20 +425,16 @@ module addr_wrap(input [W*L - 1 : 0] in, output reg [W*L - 1 : 0] out, input [31
   parameter L = 1;
   parameter AddrLen = 1;
 
-
-
-  // Shift over so that start address is at the start
-  // Then shift the leftmost values
-
   wire [31:0] ea = sa + AddrLen;
   wire [W*L - 1 : 0] base = in >> (W*sa);
   wire [31:0] diff = ea - L;
+  wire [31:0] leftover = (sa + AddrLen) % L;
 
   always @(*) begin
     $display("sa = %d", sa);
 
     if (ea > L) begin
-      out = 123;
+      out = base | (in << (AddrLen - leftover)*W);
     end else begin
       out = base;
     end

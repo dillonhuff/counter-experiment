@@ -778,6 +778,10 @@ def conv_1_3_vec_test():
     # 1 clk after the last iteration of producer_c_inner starts
     p.add_sub_event("read_aggregator_base", "read_agg");
     p.set_delay("read_agg", quant(1, "clk"))
+    
+    # Now: Need to write to the aggregate buffer on each valid
+    read_input = p.read('world', 'in', 'producer_c_inner')
+    p.write('aggregator', {'in' : read_input}, 'en', 'producer_c_inner')
 
     # --- Swizzler read input loops
     # Wait for 2 enables after root to start (since the root is after the 1st en)
@@ -816,10 +820,6 @@ def conv_1_3_vec_test():
     # TODO: Adjust to handle the fact that read_col_counter_out must be put in a register
     # p.assign('swizzler_sa', '(read_row_counter_out*{0} + read_col_counter_out) % {1}'.format(n_cols_out, vec_width))
     p.assign('swizzler_sa', '(read_col_counter_out) % {1}'.format(n_cols_out, vec_width))
-
-    # Now: Need to write to the aggregate buffer on each valid
-    read_input = p.read('world', 'in', 'producer_c_inner')
-    p.write('aggregator', {'in' : read_input}, 'en', 'producer_c_inner')
 
     p.synthesize_control_path()
 
