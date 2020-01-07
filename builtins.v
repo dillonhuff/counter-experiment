@@ -82,6 +82,8 @@ module delay_one_en #(
     assign out = en & shreg;
 endmodule
 
+// Assumes that if en and in arrive in the same cycle
+// then en < in
 module delay_n_ens(input clk, rst, en,
   input [W - 1 : 0] in, output [W - 1:0] out);
 
@@ -94,9 +96,10 @@ module delay_n_ens(input clk, rst, en,
       delay_one_en d(.clk(clk), .rst(rst), .en(en), .in(in), .out(out));
     end else if (N == 0) begin
       assign out = in;
-      //wire d_out;
-      //delay_one_en d(.clk(clk), .rst(rst), .en(en), .in(in), .out(d_out));
-      //delay_n_ens #(.N(N - 1)) rest(.clk(clk), .rst(rst), .en
+    end else if (N > 1) begin
+      wire d_out;
+      delay_one_en d(.clk(clk), .rst(rst), .en(en), .in(in), .out(d_out));
+      delay_n_ens #(.N(N - 1)) rest(.clk(clk), .rst(rst), .en(en), .in(d_out), .out(out));
     end
   endgenerate
 
