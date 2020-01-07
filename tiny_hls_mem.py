@@ -709,7 +709,12 @@ def conv_1_3_vec_test():
     mod_name = "conv_1_3_vec"
 
     p = HWProgram(mod_name);
-    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 16*3), outpt("in", 16), inpt("producer_r_count", 32), inpt("producer_c_outer_count", 32), inpt("producer_c_inner_count", 32), inpt("producer_r_v"), inpt("producer_c_inner_v"), inpt("producer_c_outer_v")])
+    world = Module("_world_",
+            [outpt("clk"), outpt("rst"),
+                outpt("en"), inpt("valid"), inpt("out", 16*3), outpt("in", 16),
+                inpt("producer_r_count", 32), inpt("producer_c_outer_count", 32), inpt("producer_c_inner_count", 32), inpt("producer_r_v"), inpt("producer_c_inner_v"), inpt("producer_c_outer_v"),
+                inpt("agg_output_valid"),
+                inpt("agg_output_data", 16*4)])
     p.add_inst("world", world)
 
     addr_width = 7
@@ -758,6 +763,8 @@ def conv_1_3_vec_test():
     p.assign('producer_r_v', 'control_path_producer_r')
     p.assign('producer_c_outer_v', 'control_path_producer_c_outer')
     p.assign('producer_c_inner_v', 'control_path_producer_c_inner')
+    p.assign('agg_output_valid', 'control_path_read_agg')
+    p.assign('agg_output_data', 'aggregator_out')
 
     # Now: Need to write to the aggregate buffer on each valid
     read_input = p.read('world', 'in', 'producer_c_inner')
@@ -771,7 +778,7 @@ def conv_1_3_vec_test():
     run_test(mod_name)
     return
 
-
 register_vectorize_test()
 sram_loop_test()
 conv_1_3_vec_test()
+
