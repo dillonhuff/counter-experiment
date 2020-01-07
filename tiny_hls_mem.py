@@ -264,7 +264,10 @@ class HWProgram:
         self.writes = []
         self.iis = {}
         self.extra_verilog = ""
-   
+
+    def assign(self, lhs, rhs):
+        self.extra_verilog += '\tassign {0} = {1};\n'.format(lhs, rhs)
+
     def set_delay(self, event_name, value):
         self.delays[event_name] = value
 
@@ -514,7 +517,7 @@ def add_event_counter(prog, loop_name):
             [inpt("clk"), inpt("rst"), inpt("en"), inpt("clear"), outpt("out", 32)])
     prog.add_inst(loop_name + '_counter', reg)
     prog.write(loop_name + '_counter', {}, "en", loop_name)
-    prog.extra_verilog += '\n\tassign {0}_clear = {1} == {2};\n'.format(loop_name + '_counter', loop_name + '_counter_out', trip_count - 1)
+    prog.extra_verilog += '\tassign {0}_clear = ({1} == {2}) & {3};\n'.format(loop_name + '_counter', loop_name + '_counter_out', trip_count - 1, 'control_path_' + loop_name)
 
 def add_reg(prog, name, width):
     reg = Module("register_s #(.WIDTH({0}))".format(width),
@@ -708,7 +711,7 @@ def conv_1_3_vec_test():
     mod_name = "conv_1_3_vec"
 
     p = HWProgram(mod_name);
-    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 16*3), outpt("in", 16)])
+    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 16*3), outpt("in", 16), inpt("producer_r_count", 32), inpt("producer_c_outer_count", 32), inpt("producer_c_inner_count", 32), inpt("producer_r_v"), inpt("producer_c_inner_v"), inpt("producer_c_outer_v")])
     p.add_inst("world", world)
 
     addr_width = 7
@@ -730,13 +733,23 @@ def conv_1_3_vec_test():
     n_cols_in = 6
     n_cols_outer = n_cols_in // vec_width + 1
     p.add_loop("producer_r", 0, n_rows - 1)
+    p.set_ii("producer_r", quant(n_cols_in, 'en'))
     p.add_sub_loop("producer_r", "producer_c_outer", 0, n_cols_outer - 1)
+    p.set_ii("producer_c_outer", quant(vec_width, 'en'))
     p.add_sub_loop("producer_c_outer", "producer_c_inner", 0, vec_width - 1)
+    p.set_ii("producer_c_inner", quant(1, 'en'))
 
     add_event_counter(p, "producer_r")
     add_event_counter(p, "producer_c_outer")
     add_event_counter(p, "producer_c_inner")
 
+    p.assign('producer_r_count', 'producer_r_counter_out')
+    p.assign('producer_c_outer_count', 'producer_c_outer_counter_out')
+    p.assign('producer_c_inner_count', 'producer_c_inner_counter_out')
+
+    p.assign('producer_r_v', 'control_path_producer_r')
+    p.assign('producer_c_outer_v', 'control_path_producer_c_outer')
+    p.assign('producer_c_inner_v', 'control_path_producer_c_inner')
     p.synthesize_control_path()
 
     print('// Verilog...')
