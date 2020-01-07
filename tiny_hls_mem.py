@@ -73,6 +73,12 @@ class Module:
         self.ports = ports
         self.body = body
 
+    def add_port(self, pt):
+        if pt in self.ports:
+            print(pt, 'is already in', self.ports)
+        assert(not pt in self.ports)
+        self.ports.append(pt)
+
     def __repr__(self):
         s = ''
         portstrings = []
@@ -294,7 +300,7 @@ class HWProgram:
     def add_instr(self, instr):
         self.instructions.append(instr)
 
-    def add_sub_event(self, predecessor, name):
+    def add_sub_event(self, predecessor, name, delay=quant(0, 'en')):
         m = 0
         e = 0
         nodes = all_nodes(self.loop_root)
@@ -302,11 +308,17 @@ class HWProgram:
         for n in nodes:
             if n.data[0] == predecessor:
                 n.children.append(Tree((name, Interval(m, e))))
-                self.set_delay(name, quant(0, 'en'))
+                self.set_delay(name, delay)
                 found = True
                 break;
         assert(found)
         self.set_ii(name, quant(1, 'en'))
+
+    def add_lp(self, predecessor, name, trip_count, ii=quant(1, 'clk'), delay=quant(0, 'clk')):
+        assert(trip_count > 0)
+        self.add_sub_loop(predecessor, name, 0, trip_count - 1)
+        self.set_ii(name, ii)
+        self.set_delay(name, delay)
 
     def add_sub_loop(self, predecessor, name, m, e):
         nodes = all_nodes(self.loop_root)
@@ -516,6 +528,10 @@ def add_event_counter(prog, loop_name):
     prog.add_inst(loop_name + '_counter', reg)
     prog.write(loop_name + '_counter', {}, "en", loop_name)
     prog.extra_verilog += '\tassign {0}_clear = ({1} == {2}) & {3};\n'.format(loop_name + '_counter', loop_name + '_counter_out', trip_count - 1, 'control_path_' + loop_name)
+
+def add_debug_port(p, event_name):
+    p.instances["world"].add_port(inpt(event_name))
+    p.assign(event_name, 'control_path_' + event_name)
 
 def add_reg(prog, name, width):
     reg = Module("register_s #(.WIDTH({0}))".format(width),
@@ -730,7 +746,7 @@ def conv_1_3_vec_test():
                 inpt("en"), inpt("in", 64), outpt("out", 64)])
     p.add_inst('swizzler', sb)
 
-    # Aggregator input loops
+    # --- Aggregator input loops
     vec_width = 4
     n_rows = 5
     n_cols_in = 6
@@ -752,6 +768,23 @@ def conv_1_3_vec_test():
     p.add_sub_event("read_aggregator_base", "read_agg");
     p.set_delay("read_agg", quant(1, "clk"))
 
+    # --- Swizzler read input loops
+    # Wait for 2 enables after root to start (since the root is after the 1st en)
+    # Then wait for the write to the aggregator, 
+    p.add_sub_event("root", "start_reads_p", quant(2, 'en'))
+    p.add_sub_event('start_reads_p', 'start_reads', quant(1, 'clk'))
+    add_debug_port(p, 'start_reads')
+
+    n_rows_out = n_rows
+    n_cols_out = n_cols_in - 2
+    p.add_lp("start_reads", "read_row", n_rows_out, quant(n_cols_in, 'en'))
+    p.add_lp("read_row", "read_col", n_cols_out, quant(1, 'en'))
+    add_debug_port(p, 'read_col')
+
+    # Later: Add read_row, read_col counters to create window start indexes,
+    # then use those indexes to read with wrapping from the aggregator?
+
+    # Extra debug code
     add_event_counter(p, "producer_r")
     add_event_counter(p, "producer_c_outer")
     add_event_counter(p, "producer_c_inner")
