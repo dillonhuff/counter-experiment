@@ -420,3 +420,17 @@ module shift_buffer(input clk, input rst, input en, input shift_dir, input [31:0
 
 endmodule
 
+module addr_wrap(input [W*L - 1 : 0] in, output reg [W*L - 1 : 0] out, input [31:0] sa);
+  parameter W = 1;
+  parameter L = 1;
+  parameter AddrLen = 1;
+
+  // Shift over so that start address is at the start
+  // Then shift the leftmost values
+
+  always @(*) begin
+    out = in >> (W*sa);
+  end
+
+endmodule
+

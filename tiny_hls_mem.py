@@ -77,6 +77,10 @@ class Module:
         if pt in self.ports:
             print(pt, 'is already in', self.ports)
         assert(not pt in self.ports)
+        for opt in self.ports:
+            if pt[0] == opt[0]:
+                assert(False)
+
         self.ports.append(pt)
 
     def __repr__(self):
@@ -319,6 +323,7 @@ class HWProgram:
         self.add_sub_loop(predecessor, name, 0, trip_count - 1)
         self.set_ii(name, ii)
         self.set_delay(name, delay)
+        add_event_counter(self, name)
 
     def add_sub_loop(self, predecessor, name, m, e):
         nodes = all_nodes(self.loop_root)
@@ -529,9 +534,13 @@ def add_event_counter(prog, loop_name):
     prog.write(loop_name + '_counter', {}, "en", loop_name)
     prog.extra_verilog += '\tassign {0}_clear = ({1} == {2}) & {3};\n'.format(loop_name + '_counter', loop_name + '_counter_out', trip_count - 1, 'control_path_' + loop_name)
 
-def add_debug_port(p, event_name):
-    p.instances["world"].add_port(inpt(event_name))
-    p.assign(event_name, 'control_path_' + event_name)
+def add_debug_port(p, inst, event_name, width=1):
+    if inst == 'control_path':
+        p.instances["world"].add_port(inpt(event_name, width))
+        p.assign(event_name, inst + '_' + event_name)
+    else:
+        p.instances["world"].add_port(inpt(inst + '_' + event_name + '_dbg', width))
+        p.assign(inst + '_' + event_name + '_dbg', inst + '_' + event_name)
 
 def add_reg(prog, name, width):
     reg = Module("register_s #(.WIDTH({0}))".format(width),
@@ -741,9 +750,11 @@ def conv_1_3_vec_test():
             [inpt("clk"), inpt("rst"), inpt("en"), inpt("in", 16), outpt("out", 64)])
     p.add_inst('aggregator', agg)
 
-    sb = Module('shift_buffer #(.WIDTH(16), .N_ELEMS(4))',
-            [inpt("clk"), inpt("rst"), inpt("shift_dir"), inpt("shift_amount", 32),
-                inpt("en"), inpt("in", 64), outpt("out", 64)])
+    sb = Module('addr_wrap#(.W(16), .L(4), .AddrLen(3))',
+            [inpt("sa", 32), inpt("in", 64), outpt("out", 64)])
+    # sb = Module('shift_buffer #(.WIDTH(16), .N_ELEMS(4))',
+            # [inpt("clk"), inpt("rst"), inpt("shift_dir"), inpt("shift_amount", 32),
+                # inpt("en"), inpt("in", 64), outpt("out", 64)])
     p.add_inst('swizzler', sb)
 
     # --- Aggregator input loops
@@ -773,13 +784,13 @@ def conv_1_3_vec_test():
     # Then wait for the write to the aggregator, 
     p.add_sub_event("root", "start_reads_p", quant(2, 'en'))
     p.add_sub_event('start_reads_p', 'start_reads', quant(1, 'clk'))
-    add_debug_port(p, 'start_reads')
+    add_debug_port(p, 'control_path', 'start_reads')
 
     n_rows_out = n_rows
     n_cols_out = n_cols_in - 2
     p.add_lp("start_reads", "read_row", n_rows_out, quant(n_cols_in, 'en'))
     p.add_lp("read_row", "read_col", n_cols_out, quant(1, 'en'))
-    add_debug_port(p, 'read_col')
+    add_debug_port(p, 'control_path', 'read_col')
 
     # Later: Add read_row, read_col counters to create window start indexes,
     # then use those indexes to read with wrapping from the aggregator?
@@ -798,6 +809,11 @@ def conv_1_3_vec_test():
     p.assign('producer_c_inner_v', 'control_path_producer_c_inner')
     p.assign('agg_output_valid', 'control_path_read_agg')
     p.assign('agg_output_data', 'aggregator_out')
+    p.assign('swizzler_in', 'aggregator_out')
+    add_debug_port(p, 'swizzler', 'out', 64)
+
+    # What is the start address?
+    p.assign('swizzler_sa', '(read_col_counter_out*{0} + read_row_counter_out) % {1}'.format(n_cols_out, vec_width))
 
     # Now: Need to write to the aggregate buffer on each valid
     read_input = p.read('world', 'in', 'producer_c_inner')
