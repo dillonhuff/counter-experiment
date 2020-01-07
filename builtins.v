@@ -381,11 +381,11 @@ module serial_to_parallel_rf(input clk,
     end else begin
       if (en) begin
         data[WIDTH*next_write_addr +: WIDTH] <= in;
-        $display("\ta[%d] = %d", next_write_addr, in);
-        $display("\t\ta[0] = %d", data[0 +: WIDTH]);
-        $display("\t\ta[1] = %d", data[WIDTH*1 +: WIDTH]);
-        $display("\t\ta[2] = %d", data[WIDTH*2 +: WIDTH]);
-        $display("\t\ta[3] = %d", data[WIDTH*3 +: WIDTH]);
+        //$display("\ta[%d] = %d", next_write_addr, in);
+        //$display("\t\ta[0] = %d", data[0 +: WIDTH]);
+        //$display("\t\ta[1] = %d", data[WIDTH*1 +: WIDTH]);
+        //$display("\t\ta[2] = %d", data[WIDTH*2 +: WIDTH]);
+        //$display("\t\ta[3] = %d", data[WIDTH*3 +: WIDTH]);
       end
     end
   end
