@@ -369,6 +369,8 @@ class HWProgram:
                 val = wr.ports[pt]
                 ports_to_writes[(wr.inst, pt)].append((val, wr.time, wr.pred))
         print('All writes:', ports_to_writes)
+        
+        out = open(self.name + '.v', 'w')
         istr = ""
         a = []
         # Declare internally defined modules, such as the control path
@@ -380,12 +382,15 @@ class HWProgram:
                     istr += '\n\n'
                     a.append(self.instances[inst].name)
 
+        out.write(istr)
+        istr = ""
         ports = []
         world = self.instances["world"]
         for pt in world.ports:
-            ports.append(pt_verilog(reverse_pt(pt)))
+            ports.append(reverse_pt(pt))
+            # pt_verilog(reverse_pt(pt)))
 
-        istr += 'module {0} {1};\n'.format(self.name, sep_list('(', ')', ', ', ports))
+        # istr += 'module {0} {1};\n'.format(self.name, sep_list('(', ')', ', ', ports))
 
         for inst in self.instances:
             if inst != "world":
@@ -453,10 +458,11 @@ class HWProgram:
                     istr += tab(3) + '{0} = {1};\n'.format(pt_underscore_str(w[0], w[1]), pt_underscore_str(trigger.inst, trigger.port));
                     istr += tab(2) + 'end\n'
                 istr += '\tend\n'
-        istr += 'endmodule\n'
+        # istr += 'endmodule\n'
 
-        out = open(self.name + '.v', 'w')
-        out.write(istr)
+        this_mod = Module(self.name, ports, istr)
+        out.write(str(this_mod))
+        # out.write(istr)
         out.close()
 
 def pt_verilog(pt):
@@ -724,12 +730,6 @@ def conv_1_3_vec_test():
     add_event_counter(p, "producer_r")
     add_event_counter(p, "producer_c_outer")
     add_event_counter(p, "producer_c_inner")
-
-    # p.add_sub_event("write_ram", "read_ram")
-    # p.set_delay("read_ram", quant(1, "clk"))
-
-    # p.add_sub_event("read_ram", "write_output")
-    # p.set_delay("write_output", quant(1, "clk"))
 
     p.synthesize_control_path()
 
