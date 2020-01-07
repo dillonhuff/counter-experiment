@@ -309,6 +309,7 @@ class HWProgram:
             if n.data[0] == predecessor:
                 n.children.append(Tree((name, Interval(m, e))))
                 self.set_delay(name, quant(0, 'en'))
+                self.set_ii(name, quant(1, 'clk'))
                 found = True
                 break;
         assert(found)
@@ -316,6 +317,7 @@ class HWProgram:
     def add_loop(self, name, m, e):
         self.loop_root.children.append(Tree((name, Interval(m, e))))
         self.set_delay(name, quant(0, 'en'))
+        self.set_ii(name, quant(1, 'clk'))
 
     def set_ii(self, name, ii):
         assert(isinstance(ii, DimQuantity))
@@ -697,6 +699,15 @@ def conv_1_3_vec_test():
             [inpt("clk"), inpt("rst"), inpt("shift_dir"), inpt("shift_amount", 32),
                 inpt("en"), inpt("in", 64), outpt("out", 64)])
     p.add_inst('swizzler', sb)
+
+    # Aggregator input loops
+    vec_width = 4
+    n_rows = 5
+    n_cols_in = 6
+    n_cols_outer = n_cols_in // vec_width + 1
+    p.add_loop("producer_r", 0, n_rows - 1)
+    p.add_sub_loop("producer_r", "producer_c_outer", 0, n_cols_outer - 1)
+    p.add_sub_loop("producer_c_outer", "producer_c_inner", 0, vec_width - 1)
 
     # p.add_sub_event("write_ram", "read_ram")
     # p.set_delay("read_ram", quant(1, "clk"))
