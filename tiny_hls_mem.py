@@ -732,10 +732,13 @@ def conv_1_3_vec_test():
     n_rows = 5
     n_cols_in = 6
     n_cols_outer = n_cols_in // vec_width + 1
+    
     p.add_loop("producer_r", 0, n_rows - 1)
-    p.set_ii("producer_r", quant(n_cols_in, 'en'))
+    p.set_ii("producer_r", quant(vec_width*n_cols_outer, 'en'))
+    
     p.add_sub_loop("producer_r", "producer_c_outer", 0, n_cols_outer - 1)
     p.set_ii("producer_c_outer", quant(vec_width, 'en'))
+ 
     p.add_sub_loop("producer_c_outer", "producer_c_inner", 0, vec_width - 1)
     p.set_ii("producer_c_inner", quant(1, 'en'))
 
