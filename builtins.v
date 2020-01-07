@@ -328,14 +328,9 @@ module serial_to_parallel_rf(input clk,
   parameter WIDTH = 1;
   parameter N_OUTS = 1;
   
-  //reg do_write;
-  //reg [31:0] write_addr;
   reg [WIDTH*N_OUTS - 1 : 0] data;
   wire [31:0] next_write_addr;
   wire wrap_addr = en & (next_write_addr == (N_OUTS - 1));
-  //wire wrap_addr = do_write & (next_write_addr == (N_OUTS - 1));
-  //wire [31:0] bit_bot = WIDTH*next_write_addr;
-  //wire [31:0] bit_top = bit_top + (WIDTH - 1);
 
   always @(posedge clk) begin
     if (rst) begin
@@ -343,7 +338,7 @@ module serial_to_parallel_rf(input clk,
     end else begin
       if (en) begin
         data[WIDTH*next_write_addr +: WIDTH] <= in;
-        $display("\ta[%d] = %d, a = %b", next_write_addr, in, data);
+        $display("\ta[%d] = %d", next_write_addr, in);
         $display("\t\ta[0] = %d", data[0 +: WIDTH]);
         $display("\t\ta[1] = %d", data[WIDTH*1 +: WIDTH]);
         $display("\t\ta[2] = %d", data[WIDTH*2 +: WIDTH]);
@@ -355,8 +350,6 @@ module serial_to_parallel_rf(input clk,
   counter #(.MIN(0), .MAX(N_OUTS - 1)) addr(.clk(clk), .rst(rst), .clear(wrap_addr), .en(en), .out(next_write_addr));
 
   assign out = data;
-  // TODO: Add real control logic
-  //assign valid = 0;
 
 endmodule
 

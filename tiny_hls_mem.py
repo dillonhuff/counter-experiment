@@ -742,6 +742,13 @@ def conv_1_3_vec_test():
     p.add_sub_loop("producer_c_outer", "producer_c_inner", 0, vec_width - 1)
     p.set_ii("producer_c_inner", quant(1, 'en'))
 
+    # p.add_sub_event("producer_c_inner", "read_aggregator_base");
+    # p.set_delay("read_aggregator_base", quant(vec_width, "en"))
+
+    # # 1 clk after the last iteration of producer_c_inner starts
+    # p.add_sub_event("read_aggregator_base", "read_agg");
+    # p.set_delay("read_agg", quant(1, "clk"))
+
     add_event_counter(p, "producer_r")
     add_event_counter(p, "producer_c_outer")
     add_event_counter(p, "producer_c_inner")
