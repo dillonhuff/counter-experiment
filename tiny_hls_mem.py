@@ -215,9 +215,9 @@ def build_control_path(event_tree, var_bounds, iis, delays):
                 body += '\twire {0}_to_{1}_delay_sr_out;\n'.format(pred_happened, name)
                 en_signal = delay_unit if delay_unit != "clk" else "1'b1"
                 new_pred_happened = '{0}_to_{1}_delay_sr_out'.format(pred_happened, name)
-                modstr = instantiate_mod('shift_register #(.L({0}), .W(1))'.format(delay),
+                modstr = instantiate_mod('delay_one_en #(.W(1))',
                         '{0}_to_{1}_delay_sr'.format(pred_name, name),
-                        {'clk' : 'clk', 'rst' : 'rst', 'en' : en_signal, 'Serial_in' : pred_happened, "Serial_out" : new_pred_happened})
+                        {'clk' : 'clk', 'rst' : 'rst', 'en' : en_signal, 'in' : pred_happened, "out" : new_pred_happened})
                 pred_happened = new_pred_happened
                 body += '\t{0}\n'.format(modstr)
 

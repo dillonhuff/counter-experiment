@@ -62,6 +62,43 @@ module single_port_sram(input clk,
 
 endmodule
 
+module delay_one_en #(
+    parameter W = 1
+) (
+    input clk, rst, en,
+    input [W-1:0] in,
+    output [W-1:0] out 
+);
+    reg [W-1:0] shreg;
+
+    always @(posedge clk) begin
+      if (rst) begin
+        shreg <= 0;
+      end else if (en) begin
+        shreg <= in;
+      end
+    end
+
+    assign out = en & shreg;
+endmodule
+
+//module delay_n_ens(input clk, rst, en,
+  //input [W - 1 : 0] in, input [W - 1:0] out);
+
+  //parameter N = 1;
+
+  //generate
+    //if (N == 1) begin
+      //delay_one_en d(.clk(clk), .rst(rst), .en(en), .in(in), .out(out));
+    //end else begin
+      //wire d_out;
+      //delay_one_en d(.clk(clk), .rst(rst), .en(en), .in(in), .out(d_out));
+      //delay_n_ens #(.N(N - 1)) rest(.clk(clk), .rst(rst), .en
+    //end
+  //endgenerate
+
+//endmodule
+
 module shift_register #(
     parameter L = 1, // Number of stages (1 = this is a simple FF)
     parameter W = 1// Width of Serial_in / Serial_out
