@@ -682,7 +682,7 @@ def conv_1_3_vec_test():
     mod_name = "conv_1_3_vec"
 
     p = HWProgram(mod_name);
-    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 16*3), inpt("x_valid"), outpt("in", 16)])
+    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 16*3), outpt("in", 16)])
     p.add_inst("world", world)
 
     addr_width = 7
