@@ -270,6 +270,10 @@ class HWProgram:
     def add_inst(self, name, mod):
         self.instances[name] = mod
 
+    def comb_read(self, inst, pt):
+        time = "1'b1"
+        return read(self, inst, pt, time)
+
     def read(self, inst, pt, time):
         mod = self.instances[inst]
         found_pt = False
@@ -492,6 +496,14 @@ def write_reg(p, inst, value, time):
 def read_reg(p, inst, time):
     return p.read(inst, "q", time)
 
+def add_event_counter(prog, loop_name):
+    bounds = prog.loop_bounds()
+    trip_count = bounds[loop_name].e - bounds[loop_name].s + 1
+    reg = Module("counter #(.MIN(0), .MAX({0}))".format(trip_count - 1),
+            [inpt("clk"), inpt("rst"), inpt("en"), inpt("clear"), outpt("out", 32)])
+    prog.add_inst(loop_name + '_counter', reg)
+    prog.write(loop_name + '_counter', {}, "en", loop_name)
+
 def add_reg(prog, name, width):
     reg = Module("register_s #(.WIDTH({0}))".format(width),
             [inpt("clk"), inpt("rst"), inpt("en"), inpt("d", width), outpt("q", width)], "")
@@ -709,26 +721,15 @@ def conv_1_3_vec_test():
     p.add_sub_loop("producer_r", "producer_c_outer", 0, n_cols_outer - 1)
     p.add_sub_loop("producer_c_outer", "producer_c_inner", 0, vec_width - 1)
 
+    add_event_counter(p, "producer_r")
+    add_event_counter(p, "producer_c_outer")
+    add_event_counter(p, "producer_c_inner")
+
     # p.add_sub_event("write_ram", "read_ram")
     # p.set_delay("read_ram", quant(1, "clk"))
 
     # p.add_sub_event("read_ram", "write_output")
     # p.set_delay("write_output", quant(1, "clk"))
-
-    # # Read in address and data and write it to the ram 
-    # read_for_reg = p.read("world", "in", "write_ram")
-    # read_addr = p.read("world", "in_addr", "write_ram")
-    # p.write("mem", {"addr" : read_addr, "d" : read_for_reg}, "wen", "write_ram")
-    # write_reg(p, "addr_reg", read_addr, "write_ram")
-
-    # # Start to read the written value from the RAM
-    # # Note: the address must be saved from the initial value?
-    # old_addr = read_reg(p, "addr_reg", "read_ram")
-    # p.write("mem", {"addr" : old_addr}, "ren", "read_ram")
-
-    # # Finish by writing the data from the ram to the module output
-    # mem_output = p.read("mem", "q", "write_output")
-    # p.write("world", {"out" : mem_output}, "valid", "write_output")
 
     p.synthesize_control_path()
 
