@@ -680,3 +680,4 @@ def sram_loop_test():
 
 register_vectorize_test()
 sram_loop_test()
+

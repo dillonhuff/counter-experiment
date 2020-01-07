@@ -323,3 +323,36 @@ endmodule
 // condition_at_last_signal(happening, !x_at_trip_count)
 module reg_1(input clk, input rst, input en, input d, output q);
 endmodule
+
+module aggregator(input clk,
+  input rst,
+  input en,
+  input [WIDTH - 1 : 0] in,
+  output [N_OUTS*WIDTH - 1 : 0] out);
+
+  parameter WIDTH = 1;
+  parameter N_OUTS = 1;
+  
+  reg do_write;
+  reg [WIDTH - 1 : 0] data [N_OUTS - 1 : 0];
+  wire [31:0] next_write_addr;
+  wire wrap_addr = do_write & (next_write_addr == (N_OUTS - 1));
+
+  always @(posedge clk) begin
+    if (rst) begin
+      do_write <= 0;
+    end else begin
+      if (en) begin
+        do_write <= 1;
+      end else begin
+        do_write <= 0;
+      end
+    end
+  end
+
+  counter #(MIN(0), .MAX(N_OUTS - 1)) addr(.clk(clk), .rst(rst), .clear(wrap_addr), .en(en), .out(next_write_addr));
+
+  assign out = data;
+
+endmodule
+
