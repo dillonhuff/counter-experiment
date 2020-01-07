@@ -324,16 +324,18 @@ endmodule
 module reg_1(input clk, input rst, input en, input d, output q);
 endmodule
 
-module aggregator(input clk,
+module serial_to_parallel_rf(input clk,
   input rst,
   input en,
   input [WIDTH - 1 : 0] in,
-  output [N_OUTS*WIDTH - 1 : 0] out);
+  output [N_OUTS*WIDTH - 1 : 0] out,
+  output valid);
 
   parameter WIDTH = 1;
   parameter N_OUTS = 1;
   
   reg do_write;
+  reg [31:0] write_addr;
   reg [WIDTH - 1 : 0] data [N_OUTS - 1 : 0];
   wire [31:0] next_write_addr;
   wire wrap_addr = do_write & (next_write_addr == (N_OUTS - 1));
@@ -343,16 +345,40 @@ module aggregator(input clk,
       do_write <= 0;
     end else begin
       if (en) begin
-        do_write <= 1;
-      end else begin
-        do_write <= 0;
-      end
+        data[next_write_addr] <= in;
+      end 
     end
   end
 
   counter #(MIN(0), .MAX(N_OUTS - 1)) addr(.clk(clk), .rst(rst), .clear(wrap_addr), .en(en), .out(next_write_addr));
 
   assign out = data;
+  // TODO: Add real control logic
+  assign valid = 0;
+
+endmodule
+
+module shift_buffer(input clk, input rst, input en, input shift_dir, input [31:0] shift_amount, input [WIDTH * N_ELEMS - 1 : 0] in, output [WIDTH * N_ELEMS - 1 : 0] out);
+  
+  parameter WIDTH = 1;
+  parameter N_ELEMS = 2;
+
+  localparam SHIFT_RIGHT = 0;
+  localparam SHIFT_LEFT = 1;
+
+  reg [WIDTH -  1 : 0] data [N_ELEMS - 1 : 0];
+
+  always @(posedge clk) begin
+    if (rst) begin
+      data <= 0;
+    end else if (en) begin
+      if (shift_dir == SHIFT_RIGHT) begin
+        data <= data | (in >> shift_amount);
+      end else if (shift_dir == SHIFT_LEFT) begin
+        data <= data | (in << shift_amount);
+      end
+    end
+  end
 
 endmodule
 
