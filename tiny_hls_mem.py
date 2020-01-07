@@ -357,8 +357,7 @@ class HWProgram:
 
         return
 
-    def print_verilog(self):
-
+    def whole_module(self):
         # Need to map reads to operations and operations to reads
         ports_to_writes = {}
         for rd in self.writes:
@@ -370,19 +369,6 @@ class HWProgram:
                 ports_to_writes[(wr.inst, pt)].append((val, wr.time, wr.pred))
         print('All writes:', ports_to_writes)
         
-        out = open(self.name + '.v', 'w')
-        istr = ""
-        a = []
-        # Declare internally defined modules, such as the control path
-        for inst in self.instances:
-            if not self.instances[inst].name in a:
-                if self.instances[inst].body != "":
-                    istr += '//{0}\n\n'.format(self.instances[inst].name)
-                    istr += str(self.instances[inst])
-                    istr += '\n\n'
-                    a.append(self.instances[inst].name)
-
-        out.write(istr)
         istr = ""
         ports = []
         world = self.instances["world"]
@@ -461,6 +447,24 @@ class HWProgram:
         # istr += 'endmodule\n'
 
         this_mod = Module(self.name, ports, istr)
+        return this_mod
+
+    def print_verilog(self):
+
+        out = open(self.name + '.v', 'w')
+        istr = ""
+        a = []
+        # Declare internally defined modules, such as the control path
+        for inst in self.instances:
+            if not self.instances[inst].name in a:
+                if self.instances[inst].body != "":
+                    istr += '//{0}\n\n'.format(self.instances[inst].name)
+                    istr += str(self.instances[inst])
+                    istr += '\n\n'
+                    a.append(self.instances[inst].name)
+
+        out.write(istr)
+        this_mod = self.whole_module()
         out.write(str(this_mod))
         # out.write(istr)
         out.close()
