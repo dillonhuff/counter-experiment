@@ -689,9 +689,14 @@ def conv_1_3_vec_test():
     ram = Module("single_port_sram #(.WIDTH(64), .DEPTH(128))", [inpt("clk"), inpt("rst"), inpt("ren"), inpt("wen"), inpt("addr", addr_width), inpt("d", 64), outpt("q", 64)])
     p.add_inst("mem", ram)
 
-    add_reg(p, "addr_reg", addr_width)
+    agg = Module('serial_to_parallel_rf #(.WIDTH(16), .N_OUTS(4))',
+            [inpt("clk"), inpt("rst"), inpt("en"), inpt("in", 16), outpt("out", 64)])
+    p.add_inst('aggregator', agg)
 
-    p.add_sub_event("root", "write_ram")
+    sb = Module('shift_buffer #(.WIDTH(16), .N_ELEMS(4))',
+            [inpt("clk"), inpt("rst"), inpt("shift_dir"), inpt("shift_amount", 32),
+                inpt("en"), inpt("in", 64), outpt("out", 64)])
+    p.add_inst('swizzler', sb)
 
     # p.add_sub_event("write_ram", "read_ram")
     # p.set_delay("read_ram", quant(1, "clk"))

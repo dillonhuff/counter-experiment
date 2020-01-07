@@ -328,33 +328,35 @@ module serial_to_parallel_rf(input clk,
   input rst,
   input en,
   input [WIDTH - 1 : 0] in,
-  output [N_OUTS*WIDTH - 1 : 0] out,
-  output valid);
+  output [N_OUTS*WIDTH - 1 : 0] out);
 
   parameter WIDTH = 1;
   parameter N_OUTS = 1;
   
-  reg do_write;
-  reg [31:0] write_addr;
-  reg [WIDTH - 1 : 0] data [N_OUTS - 1 : 0];
-  wire [31:0] next_write_addr;
-  wire wrap_addr = do_write & (next_write_addr == (N_OUTS - 1));
+  //reg do_write;
+  //reg [31:0] write_addr;
+  ////reg [WIDTH - 1 : 0] data [N_OUTS - 1 : 0];
+  reg [WIDTH*N_OUTS - 1 : 0] data;
+  //wire [31:0] next_write_addr;
+  //wire wrap_addr = do_write & (next_write_addr == (N_OUTS - 1));
+  //wire [31:0] bit_bot = WIDTH*next_write_addr;
+  //wire [31:0] bit_top = bit_top + (WIDTH - 1);
 
-  always @(posedge clk) begin
-    if (rst) begin
-      do_write <= 0;
-    end else begin
-      if (en) begin
-        data[next_write_addr] <= in;
-      end 
-    end
-  end
+  //always @(posedge clk) begin
+    //if (rst) begin
+      //do_write <= 0;
+    //end else begin
+      //if (en) begin
+        //data[bit_top +: bit_bot] <= in;
+      //end 
+    //end
+  //end
 
-  counter #(MIN(0), .MAX(N_OUTS - 1)) addr(.clk(clk), .rst(rst), .clear(wrap_addr), .en(en), .out(next_write_addr));
+  //counter #(.MIN(0), .MAX(N_OUTS - 1)) addr(.clk(clk), .rst(rst), .clear(wrap_addr), .en(en), .out(next_write_addr));
 
-  assign out = data;
+  //assign out = data;
   // TODO: Add real control logic
-  assign valid = 0;
+  //assign valid = 0;
 
 endmodule
 
@@ -366,7 +368,7 @@ module shift_buffer(input clk, input rst, input en, input shift_dir, input [31:0
   localparam SHIFT_RIGHT = 0;
   localparam SHIFT_LEFT = 1;
 
-  reg [WIDTH -  1 : 0] data [N_ELEMS - 1 : 0];
+  reg [WIDTH * N_ELEMS - 1 : 0] data;
 
   always @(posedge clk) begin
     if (rst) begin
