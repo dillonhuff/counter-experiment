@@ -82,22 +82,25 @@ module delay_one_en #(
     assign out = en & shreg;
 endmodule
 
-//module delay_n_ens(input clk, rst, en,
-  //input [W - 1 : 0] in, input [W - 1:0] out);
+module delay_n_ens(input clk, rst, en,
+  input [W - 1 : 0] in, output [W - 1:0] out);
 
-  //parameter N = 1;
 
-  //generate
-    //if (N == 1) begin
-      //delay_one_en d(.clk(clk), .rst(rst), .en(en), .in(in), .out(out));
-    //end else begin
+  parameter W = 1;
+  parameter N = 1;
+
+  generate
+    if (N == 1) begin
+      delay_one_en d(.clk(clk), .rst(rst), .en(en), .in(in), .out(out));
+    end else if (N == 0) begin
+      assign out = in;
       //wire d_out;
       //delay_one_en d(.clk(clk), .rst(rst), .en(en), .in(in), .out(d_out));
       //delay_n_ens #(.N(N - 1)) rest(.clk(clk), .rst(rst), .en
-    //end
-  //endgenerate
+    end
+  endgenerate
 
-//endmodule
+endmodule
 
 module shift_register #(
     parameter L = 1, // Number of stages (1 = this is a simple FF)

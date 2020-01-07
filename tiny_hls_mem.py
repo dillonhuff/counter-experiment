@@ -206,20 +206,18 @@ def build_control_path(event_tree, var_bounds, iis, delays):
             modstr = instantiate_mod('signal_seen_first', 'seen_en_fst', {"clk" : "clk", "rst" : "rst", "signal" : "en", "seen" : "{0}_happening".format(name)})
             body += tab(1) + modstr + '\n'
         else:
-            assert(delay <= 1)
             pred = predecessors[name]
             pred_name = pred.data[0]
             pred_happened = '{0}_happening'.format(pred_name)
-            
-            if delay != 0:
-                body += '\twire {0}_to_{1}_delay_sr_out;\n'.format(pred_happened, name)
-                en_signal = delay_unit if delay_unit != "clk" else "1'b1"
-                new_pred_happened = '{0}_to_{1}_delay_sr_out'.format(pred_happened, name)
-                modstr = instantiate_mod('delay_one_en #(.W(1))',
-                        '{0}_to_{1}_delay_sr'.format(pred_name, name),
-                        {'clk' : 'clk', 'rst' : 'rst', 'en' : en_signal, 'in' : pred_happened, "out" : new_pred_happened})
-                pred_happened = new_pred_happened
-                body += '\t{0}\n'.format(modstr)
+           
+            body += '\twire {0}_to_{1}_delay_sr_out;\n'.format(pred_happened, name)
+            en_signal = delay_unit if delay_unit != "clk" else "1'b1"
+            new_pred_happened = '{0}_to_{1}_delay_sr_out'.format(pred_happened, name)
+            modstr = instantiate_mod('delay_n_ens #(.W(1), .N({0}))'.format(delay),
+                    '{0}_to_{1}_delay_sr'.format(pred_name, name),
+                    {'clk' : 'clk', 'rst' : 'rst', 'en' : en_signal, 'in' : pred_happened, "out" : new_pred_happened})
+            pred_happened = new_pred_happened
+            body += '\t{0}\n'.format(modstr)
 
             iiv = iis[name]
             ii = iiv.magnitude
@@ -742,12 +740,12 @@ def conv_1_3_vec_test():
     p.add_sub_loop("producer_c_outer", "producer_c_inner", 0, vec_width - 1)
     p.set_ii("producer_c_inner", quant(1, 'en'))
 
-    # p.add_sub_event("producer_c_inner", "read_aggregator_base");
-    # p.set_delay("read_aggregator_base", quant(vec_width, "en"))
+    p.add_sub_event("producer_c_inner", "read_aggregator_base");
+    p.set_delay("read_aggregator_base", quant(vec_width, "en"))
 
-    # # 1 clk after the last iteration of producer_c_inner starts
-    # p.add_sub_event("read_aggregator_base", "read_agg");
-    # p.set_delay("read_agg", quant(1, "clk"))
+    # 1 clk after the last iteration of producer_c_inner starts
+    p.add_sub_event("read_aggregator_base", "read_agg");
+    p.set_delay("read_agg", quant(1, "clk"))
 
     add_event_counter(p, "producer_r")
     add_event_counter(p, "producer_c_outer")
