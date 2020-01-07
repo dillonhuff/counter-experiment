@@ -813,7 +813,9 @@ def conv_1_3_vec_test():
     add_debug_port(p, 'swizzler', 'out', 64)
 
     # What is the start address?
-    p.assign('swizzler_sa', '(read_col_counter_out*{0} + read_row_counter_out) % {1}'.format(n_cols_out, vec_width))
+    # TODO: Adjust to handle the fact that read_col_counter_out must be put in a register
+    # p.assign('swizzler_sa', '(read_row_counter_out*{0} + read_col_counter_out) % {1}'.format(n_cols_out, vec_width))
+    p.assign('swizzler_sa', '(read_col_counter_out) % {1}'.format(n_cols_out, vec_width))
 
     # Now: Need to write to the aggregate buffer on each valid
     read_input = p.read('world', 'in', 'producer_c_inner')
