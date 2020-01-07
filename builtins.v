@@ -341,12 +341,13 @@ module serial_to_parallel_rf(input clk,
     if (rst) begin
       //do_write <= 0;
     end else begin
-      //if (en) begin
-        //data[bit_top +: bit_bot] <= in;
-      //end 
-      //
       if (en) begin
-        $display("\ta[%d] = %d", next_write_addr, in);
+        data[WIDTH*next_write_addr +: WIDTH] <= in;
+        $display("\ta[%d] = %d, a = %b", next_write_addr, in, data);
+        $display("\t\ta[0] = %d", data[0 +: WIDTH]);
+        $display("\t\ta[1] = %d", data[WIDTH*1 +: WIDTH]);
+        $display("\t\ta[2] = %d", data[WIDTH*2 +: WIDTH]);
+        $display("\t\ta[3] = %d", data[WIDTH*3 +: WIDTH]);
       end
     end
   end
