@@ -753,6 +753,11 @@ def conv_1_3_vec_test():
     p.assign('producer_r_v', 'control_path_producer_r')
     p.assign('producer_c_outer_v', 'control_path_producer_c_outer')
     p.assign('producer_c_inner_v', 'control_path_producer_c_inner')
+
+    # Now: Need to write to the aggregate buffer on each valid
+    read_input = p.read('world', 'in', 'producer_c_inner')
+    p.write('aggregator', {'in' : read_input}, 'en', 'producer_c_inner')
+
     p.synthesize_control_path()
 
     print('// Verilog...')

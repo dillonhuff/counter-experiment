@@ -319,11 +319,6 @@ module register_32(input clk, input rst, input en, input [31:0] d, output [31:0]
 
 endmodule
 
-// Self transition is: II clks since last signal and
-// condition_at_last_signal(happening, !x_at_trip_count)
-module reg_1(input clk, input rst, input en, input d, output q);
-endmodule
-
 module serial_to_parallel_rf(input clk,
   input rst,
   input en,
