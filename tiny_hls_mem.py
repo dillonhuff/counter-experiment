@@ -263,6 +263,7 @@ class HWProgram:
         self.reads = []
         self.writes = []
         self.iis = {}
+        self.extra_verilog = ""
    
     def set_delay(self, event_name, value):
         self.delays[event_name] = value
@@ -446,7 +447,7 @@ class HWProgram:
                 istr += '\tend\n'
         # istr += 'endmodule\n'
 
-        this_mod = Module(self.name, ports, istr)
+        this_mod = Module(self.name, ports, istr + '\n\t// Extra verilog...\n' + self.extra_verilog)
         return this_mod
 
     def print_verilog(self):
@@ -513,6 +514,7 @@ def add_event_counter(prog, loop_name):
             [inpt("clk"), inpt("rst"), inpt("en"), inpt("clear"), outpt("out", 32)])
     prog.add_inst(loop_name + '_counter', reg)
     prog.write(loop_name + '_counter', {}, "en", loop_name)
+    prog.extra_verilog += '\n\tassign {0}_clear = {1} == {2};\n'.format(loop_name + '_counter', loop_name + '_counter_out', trip_count - 1)
 
 def add_reg(prog, name, width):
     reg = Module("register_s #(.WIDTH({0}))".format(width),
