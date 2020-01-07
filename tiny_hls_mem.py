@@ -68,7 +68,7 @@ class ControlPath:
 
 class Module:
 
-    def __init__(self, name, ports, body):
+    def __init__(self, name, ports, body=""):
         self.name = name;
         self.ports = ports
         self.body = body
@@ -678,6 +678,51 @@ def sram_loop_test():
     run_test(mod_name)
     return
 
+def conv_1_3_vec_test():
+    mod_name = "conv_1_3_vec"
+
+    p = HWProgram(mod_name);
+    world = Module("_world_", [outpt("clk"), outpt("rst"), outpt("en"), inpt("valid"), inpt("out", 16*3), inpt("x_valid"), outpt("in", 16)])
+    p.add_inst("world", world)
+
+    addr_width = 7
+    ram = Module("single_port_sram #(.WIDTH(64), .DEPTH(128))", [inpt("clk"), inpt("rst"), inpt("ren"), inpt("wen"), inpt("addr", addr_width), inpt("d", 64), outpt("q", 64)])
+    p.add_inst("mem", ram)
+
+    add_reg(p, "addr_reg", addr_width)
+
+    p.add_sub_event("root", "write_ram")
+
+    # p.add_sub_event("write_ram", "read_ram")
+    # p.set_delay("read_ram", quant(1, "clk"))
+
+    # p.add_sub_event("read_ram", "write_output")
+    # p.set_delay("write_output", quant(1, "clk"))
+
+    # # Read in address and data and write it to the ram 
+    # read_for_reg = p.read("world", "in", "write_ram")
+    # read_addr = p.read("world", "in_addr", "write_ram")
+    # p.write("mem", {"addr" : read_addr, "d" : read_for_reg}, "wen", "write_ram")
+    # write_reg(p, "addr_reg", read_addr, "write_ram")
+
+    # # Start to read the written value from the RAM
+    # # Note: the address must be saved from the initial value?
+    # old_addr = read_reg(p, "addr_reg", "read_ram")
+    # p.write("mem", {"addr" : old_addr}, "ren", "read_ram")
+
+    # # Finish by writing the data from the ram to the module output
+    # mem_output = p.read("mem", "q", "write_output")
+    # p.write("world", {"out" : mem_output}, "valid", "write_output")
+
+    p.synthesize_control_path()
+
+    print('// Verilog...')
+    p.print_verilog()
+
+    run_test(mod_name)
+    return
+
+
 register_vectorize_test()
 sram_loop_test()
-
+conv_1_3_vec_test()
